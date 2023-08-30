@@ -1,0 +1,21 @@
+.navbar {
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.navbar-nav {
+  margin-left: auto;
+}
+
+.login-button {
+  margin-left: 10px;
+}
+
+.navbar-home-button {
+  margin-left: 20px;
+  margin-top: -5px;
+  font-size: 22px
+}

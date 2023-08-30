@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+# Perhaps a bit too powerful.. Consider changing in future
+cd ..
+yarn run build
+yarn run deploy
