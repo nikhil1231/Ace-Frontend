@@ -1,3 +1,7 @@
+export const getBookingTargets = async () => {
+  return await _getJson("/booking/targets");
+};
+
 export const getVenueAddresses = async () => {
   return await _getJson("/venues/addresses");
 };
