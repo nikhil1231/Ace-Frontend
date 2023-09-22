@@ -6,6 +6,7 @@ import { Link, Route, Routes } from "react-router-dom";
 
 import MapPage from "../pages/MapPage";
 import NotFoundPage from "../pages/NotFoundPage";
+import BookingsPage from "../pages/BookingsPage";
 import SchedulePage from "../pages/SchedulePage";
 
 const Navibar = () => {
@@ -19,6 +20,9 @@ const Navibar = () => {
         <Navbar.Collapse id="navbar-nav">
           <Nav className="mr-auto">
             <Nav.Link as={Link} to="/">
+              Bookings
+            </Nav.Link>
+            <Nav.Link as={Link} to="/schedule">
               Schedule
             </Nav.Link>
             <Nav.Link as={Link} to="/map">
@@ -29,7 +33,8 @@ const Navibar = () => {
       </Navbar>
 
       <Routes>
-        <Route path="/" element={<SchedulePage />} />
+        <Route path="/" element={<BookingsPage />} />
+        <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

@@ -15,3 +15,13 @@ export const fdate = (s) => {
     day: "numeric",
   });
 };
+
+export const fdatetime = (s) => {
+  return new Date(s).toLocaleDateString("en-uk", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+  });
+};
