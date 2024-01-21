@@ -8,6 +8,7 @@ import MapPage from "../pages/MapPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import BookingsPage from "../pages/BookingsPage";
 import SchedulePage from "../pages/SchedulePage";
+import SettingsPage from "../pages/SettingsPage";
 
 const Navibar = () => {
   return (
@@ -28,6 +29,9 @@ const Navibar = () => {
             <Nav.Link as={Link} to="/map">
               Map
             </Nav.Link>
+            <Nav.Link as={Link} to="/settings">
+              Settings
+            </Nav.Link>
           </Nav>
         </Navbar.Collapse>
       </Navbar>
@@ -36,6 +40,7 @@ const Navibar = () => {
         <Route path="/" element={<BookingsPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/map" element={<MapPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>

@@ -1,3 +1,5 @@
+const AUTH_TOKEN = "AUTH_TOKEN";
+
 export const minutesToTime = (minutes) => {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
@@ -24,4 +26,12 @@ export const fdatetime = (s) => {
     hour: "numeric",
     minute: "numeric",
   });
+};
+
+export const getToken = () => {
+  return localStorage.getItem(AUTH_TOKEN);
+};
+
+export const setToken = (token) => {
+  return localStorage.setItem(AUTH_TOKEN, token);
 };

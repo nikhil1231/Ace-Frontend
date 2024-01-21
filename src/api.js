@@ -1,3 +1,5 @@
+import { getToken } from "./util";
+
 export const getBookings = async () => {
   return await _getJson("/booking/bookings");
 };
@@ -8,6 +10,21 @@ export const getBookingTargets = async () => {
 
 export const getVenueAddresses = async () => {
   return await _getJson("/venues/addresses");
+};
+
+export const refreshBookings = async () => {
+  await _post("/booking/bookings");
+};
+
+export const cancelBooking = async (venue, session_id, username) => {
+  await _post(
+    "/booking/cancel?" +
+      new URLSearchParams({
+        venue,
+        username,
+        session_id,
+      })
+  );
 };
 
 const _getJson = async (path) => {
@@ -28,8 +45,15 @@ const _postJson = async (path, body) => {
 };
 
 const _post = async (path, json) => {
-  return await fetch(`${process.env.REACT_APP_BACKEND_URL}${path}`, {
+  const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}${path}`, {
     method: "POST",
+    headers: new Headers({
+      Authorization: "Bearer " + getToken(),
+    }),
     body: JSON.stringify(json),
   });
+  if (res.status == 401) {
+    alert("Auth failed");
+  }
+  return res;
 };
