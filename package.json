@@ -21,6 +21,9 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "admin:sync": "node ./scripts/generate_admin_endpoints.js",
+    "prestart": "npm run admin:sync",
+    "prebuild": "npm run admin:sync",
     "start": "react-scripts start",
     "build": "REACT_APP_BACKEND_URL=https://ace-tennis-9353ae97c95f.herokuapp.com react-scripts build",
     "deploy": "gh-pages -d build",

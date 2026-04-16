@@ -5,12 +5,12 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 
-import NaviBar from "./components/NaviBar";
+import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <HashRouter>
-      <NaviBar />
+      <App />
     </HashRouter>
   </React.StrictMode>
 );

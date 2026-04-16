@@ -1,21 +1,48 @@
-.navbar {
-  padding: 10px;
-  display: flex;
-  justify-content: space-between;
+.app-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.app-navbar .navbar-brand {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-navbar .nav-link {
+  border-radius: 999px;
+  color: #334155;
+  font-weight: 600;
+  margin-right: 0.35rem;
+  padding: 0.5rem 0.9rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.app-navbar .nav-link.active {
+  background: #dbeafe;
+  color: #0f172a;
+}
+
+.app-navbar .nav-link:hover {
+  background: rgba(219, 234, 254, 0.65);
+  color: #0f172a;
+}
+
+.admin-disabled-link {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.navbar-status {
   align-items: center;
-  margin-bottom: 40px;
+  display: flex;
+  gap: 0.5rem;
 }
 
-.navbar-nav {
-  margin-left: auto;
-}
-
-.login-button {
-  margin-left: 10px;
-}
-
-.navbar-home-button {
-  margin-left: 20px;
-  margin-top: -5px;
-  font-size: 22px
+@media (max-width: 991px) {
+  .navbar-status {
+    margin-top: 1rem;
+  }
 }

@@ -1,49 +1,59 @@
 import "./NaviBar.css";
 
-import React, { useEffect, useState } from "react";
-import { Nav, Navbar } from "react-bootstrap";
-import { Link, Route, Routes } from "react-router-dom";
+import React from "react";
+import { Badge, Container, Nav, Navbar } from "react-bootstrap";
+import { NavLink } from "react-router-dom";
 
-import MapPage from "../pages/MapPage";
-import NotFoundPage from "../pages/NotFoundPage";
-import BookingsPage from "../pages/BookingsPage";
-import SchedulePage from "../pages/SchedulePage";
-import SettingsPage from "../pages/SettingsPage";
+import { useAppSettings } from "../context/AppSettingsContext";
 
 const Navibar = () => {
+  const { hasAdminAccess, selectedEnvironment } = useAppSettings();
+
+  const environmentLabel =
+    selectedEnvironment === "local" ? "Local backend" : "Hosted backend";
+
   return (
-    <>
-      <Navbar bg="light" expand="lg">
-        <Navbar.Brand as={Link} to="/">
+    <Navbar bg="light" expand="lg" className="app-navbar shadow-sm">
+      <Container fluid="lg">
+        <Navbar.Brand as={NavLink} to="/" end>
           Ace
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="navbar-nav" />
         <Navbar.Collapse id="navbar-nav">
-          <Nav className="mr-auto">
-            <Nav.Link as={Link} to="/">
+          <Nav className="me-auto">
+            <Nav.Link as={NavLink} to="/" end>
               Bookings
             </Nav.Link>
-            <Nav.Link as={Link} to="/schedule">
+            <Nav.Link as={NavLink} to="/schedule">
               Schedule
             </Nav.Link>
-            <Nav.Link as={Link} to="/map">
+            <Nav.Link as={NavLink} to="/map">
               Map
             </Nav.Link>
-            <Nav.Link as={Link} to="/settings">
+            {hasAdminAccess ? (
+              <Nav.Link as={NavLink} to="/admin" end>
+                Admin
+              </Nav.Link>
+            ) : (
+              <Nav.Link as="span" className="disabled admin-disabled-link">
+                Admin
+              </Nav.Link>
+            )}
+            <Nav.Link as={NavLink} to="/settings">
               Settings
             </Nav.Link>
           </Nav>
+          <div className="navbar-status">
+            <Badge bg={selectedEnvironment === "local" ? "success" : "primary"}>
+              {environmentLabel}
+            </Badge>
+            <Badge bg={hasAdminAccess ? "dark" : "secondary"}>
+              {hasAdminAccess ? "Admin unlocked" : "Admin locked"}
+            </Badge>
+          </div>
         </Navbar.Collapse>
-      </Navbar>
-
-      <Routes>
-        <Route path="/" element={<BookingsPage />} />
-        <Route path="/schedule" element={<SchedulePage />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </>
+      </Container>
+    </Navbar>
   );
 };
 
