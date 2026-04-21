@@ -9,6 +9,7 @@ export const AUTH_REQUIRED_OPERATIONS = new Set([
   op("DELETE", "/venues/recently-used"),
   op("POST", "/booking/bookings"),
   op("POST", "/booking/book"),
+  op("POST", "/booking/login/test"),
   op("POST", "/booking/cancel"),
   op("POST", "/booking/targets/book"),
   op("PUT", "/booking/targets"),
@@ -67,6 +68,23 @@ export const ENDPOINT_OVERRIDES = {
       "body.EndTime": 1140,
       "body.NumCourts": 1,
       "body.RecurringWeekly": false,
+    },
+  },
+  [op("POST", "/booking/login/test")]: {
+    title: "Test Clubspark login",
+    description:
+      "Run only the login flow for one account and verify the resulting session.",
+    confirm: false,
+    fieldOverrides: {
+      "query.username": {
+        label: "Username (optional)",
+      },
+      "query.use_cached": {
+        label: "Use cached session",
+      },
+    },
+    initialValues: {
+      "query.use_cached": false,
     },
   },
   [op("POST", "/booking/targets/book")]: {

@@ -94,6 +94,49 @@ export const GENERATED_ENDPOINTS = [
     }
   },
   {
+    "id": "booking-login-test-post",
+    "method": "POST",
+    "path": "/booking/login/test",
+    "section": "bookings",
+    "title": "Test Clubspark Login",
+    "description": "Test Clubspark login",
+    "confirm": true,
+    "fields": [
+      {
+        "path": "query.use_cached",
+        "requestLocation": "query",
+        "requestPath": "use_cached",
+        "label": "Use Cached",
+        "type": "checkbox",
+        "dataType": "boolean",
+        "format": null,
+        "enum": null,
+        "required": false,
+        "defaultValue": false,
+        "colMd": 6
+      },
+      {
+        "path": "query.username",
+        "requestLocation": "query",
+        "requestPath": "username",
+        "label": "Username",
+        "type": "text",
+        "dataType": "string",
+        "format": null,
+        "enum": null,
+        "required": false,
+        "defaultValue": "",
+        "colMd": 6
+      }
+    ],
+    "initialValues": {
+      "query": {
+        "use_cached": false,
+        "username": ""
+      }
+    }
+  },
+  {
     "id": "booking-targets-get",
     "method": "GET",
     "path": "/booking/targets",
@@ -436,6 +479,108 @@ export const GENERATED_ENDPOINTS = [
     "confirm": true,
     "fields": [],
     "initialValues": {}
+  },
+  {
+    "id": "booking-targets-find-get",
+    "method": "GET",
+    "path": "/booking/targets/find",
+    "section": "bookings",
+    "title": "Get Bookable Slots",
+    "description": "Get Bookable Slots",
+    "confirm": false,
+    "fields": [
+      {
+        "path": "query.Date",
+        "requestLocation": "query",
+        "requestPath": "Date",
+        "label": "Date",
+        "type": "text",
+        "dataType": "string",
+        "format": null,
+        "enum": null,
+        "required": true,
+        "defaultValue": "",
+        "colMd": 6
+      },
+      {
+        "path": "query.EndTime",
+        "requestLocation": "query",
+        "requestPath": "EndTime",
+        "label": "Endtime",
+        "type": "number",
+        "dataType": "integer",
+        "format": null,
+        "enum": null,
+        "required": true,
+        "defaultValue": "",
+        "colMd": 6,
+        "step": 1
+      },
+      {
+        "path": "query.NumCourts",
+        "requestLocation": "query",
+        "requestPath": "NumCourts",
+        "label": "Numcourts",
+        "type": "number",
+        "dataType": "integer",
+        "format": null,
+        "enum": null,
+        "required": false,
+        "defaultValue": 1,
+        "colMd": 6,
+        "step": 1
+      },
+      {
+        "path": "query.RecurringWeekly",
+        "requestLocation": "query",
+        "requestPath": "RecurringWeekly",
+        "label": "Recurringweekly",
+        "type": "checkbox",
+        "dataType": "boolean",
+        "format": null,
+        "enum": null,
+        "required": false,
+        "defaultValue": false,
+        "colMd": 6
+      },
+      {
+        "path": "query.StartTime",
+        "requestLocation": "query",
+        "requestPath": "StartTime",
+        "label": "Starttime",
+        "type": "number",
+        "dataType": "integer",
+        "format": null,
+        "enum": null,
+        "required": true,
+        "defaultValue": "",
+        "colMd": 6,
+        "step": 1
+      },
+      {
+        "path": "query.Venue",
+        "requestLocation": "query",
+        "requestPath": "Venue",
+        "label": "Venue",
+        "type": "text",
+        "dataType": "string",
+        "format": null,
+        "enum": null,
+        "required": true,
+        "defaultValue": "",
+        "colMd": 6
+      }
+    ],
+    "initialValues": {
+      "query": {
+        "Date": "",
+        "EndTime": "",
+        "NumCourts": 1,
+        "RecurringWeekly": false,
+        "StartTime": "",
+        "Venue": ""
+      }
+    }
   },
   {
     "id": "booking-targets-find-post",
