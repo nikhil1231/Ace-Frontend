@@ -136,6 +136,30 @@ export const getBookings = async () => requestJson({ path: "/booking/bookings" }
 export const getBookingTargets = async () =>
   requestJson({ path: "/booking/targets" });
 
+export const getVenues = async () => requestJson({ path: "/venues" });
+
+export const getSchedule = async ({ venue, date, nDays }) => {
+  const hasDate = date !== undefined && date !== null && date !== "";
+  const hasNDays = nDays !== undefined && nDays !== null && nDays !== "";
+
+  if (!venue) {
+    throw new Error("Venue is required.");
+  }
+
+  if ((hasDate && hasNDays) || (!hasDate && !hasNDays)) {
+    throw new Error("Provide either date or n_days, but not both.");
+  }
+
+  return requestJson({
+    path: "/schedule",
+    query: {
+      venue,
+      date: hasDate ? date : undefined,
+      n_days: hasNDays ? nDays : undefined,
+    },
+  });
+};
+
 export const getVenueAddresses = async () =>
   requestJson({ path: "/venues/addresses" });
 

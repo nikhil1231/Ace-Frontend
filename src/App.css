@@ -251,6 +251,132 @@
   text-decoration: underline;
 }
 
+.schedule-controls-card {
+  margin-top: 0.5rem;
+}
+
+.schedule-mode-toggle {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  min-height: 38px;
+}
+
+.schedule-mode-toggle .form-check {
+  margin-bottom: 0;
+}
+
+.schedule-pagination {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+
+.schedule-pagination strong {
+  font-size: 1.05rem;
+}
+
+.schedule-timeline-shell {
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.schedule-timeline-scroll {
+  overflow-x: auto;
+}
+
+.schedule-timeline-grid {
+  display: grid;
+  min-width: max-content;
+}
+
+.schedule-timeline-header {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.schedule-timeline-time-header,
+.schedule-timeline-court-header {
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 0.8rem 0.7rem;
+}
+
+.schedule-timeline-time-header {
+  border-right: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.schedule-timeline-court-header {
+  border-left: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.schedule-time-column {
+  border-right: 1px solid rgba(148, 163, 184, 0.35);
+  position: relative;
+}
+
+.schedule-time-label {
+  color: #475569;
+  font-size: 0.75rem;
+  position: absolute;
+  right: 0.45rem;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.schedule-court-column {
+  background-image: linear-gradient(
+    to bottom,
+    rgba(203, 213, 225, 0.65) 1px,
+    transparent 1px
+  );
+  border-left: 1px solid rgba(148, 163, 184, 0.25);
+  min-width: 180px;
+  position: relative;
+}
+
+.schedule-session-block {
+  border-radius: 0.45rem;
+  border-style: solid;
+  border-width: 1px;
+  left: 0.3rem;
+  line-height: 1.2;
+  overflow: hidden;
+  padding: 0.35rem 0.45rem;
+  position: absolute;
+  right: 0.3rem;
+}
+
+.schedule-session-available {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+}
+
+.schedule-session-unavailable {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #854d0e;
+}
+
+.schedule-session-time {
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.schedule-session-meta {
+  font-size: 0.73rem;
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+
 @media (max-width: 767px) {
   .page-heading,
   .endpoint-card-header,
@@ -267,5 +393,10 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  .schedule-pagination {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
