@@ -791,6 +791,20 @@ export const GENERATED_ENDPOINTS = [
         "colMd": 6
       },
       {
+        "path": "query.max_venues",
+        "requestLocation": "query",
+        "requestPath": "max_venues",
+        "label": "Max Venues",
+        "type": "number",
+        "dataType": "integer",
+        "format": null,
+        "enum": null,
+        "required": false,
+        "defaultValue": 50,
+        "colMd": 6,
+        "step": 1
+      },
+      {
         "path": "query.min_end_time",
         "requestLocation": "query",
         "requestPath": "min_end_time",
@@ -853,7 +867,7 @@ export const GENERATED_ENDPOINTS = [
         "dataType": "string",
         "format": null,
         "enum": null,
-        "required": false,
+        "required": true,
         "defaultValue": "",
         "colMd": 6
       }
@@ -863,6 +877,7 @@ export const GENERATED_ENDPOINTS = [
         "date": "",
         "max_end_time": "24:00",
         "max_start_time": "24:00",
+        "max_venues": 50,
         "min_end_time": "00:00",
         "min_length": "",
         "min_start_time": "00:00",
