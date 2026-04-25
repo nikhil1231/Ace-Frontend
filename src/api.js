@@ -136,6 +136,32 @@ export const getBookings = async () => requestJson({ path: "/booking/bookings" }
 export const getBookingTargets = async () =>
   requestJson({ path: "/booking/targets" });
 
+export const putBookingTarget = async (bookingTarget) => {
+  if (!bookingTarget || typeof bookingTarget !== "object") {
+    throw new Error("Booking target payload is required.");
+  }
+
+  return requestJson({
+    method: "PUT",
+    path: "/booking/targets",
+    body: bookingTarget,
+    requiresAuth: true,
+  });
+};
+
+export const deleteBookingTarget = async (bookingTarget) => {
+  if (!bookingTarget || typeof bookingTarget !== "object") {
+    throw new Error("Booking target payload is required.");
+  }
+
+  return requestJson({
+    method: "DELETE",
+    path: "/booking/targets",
+    body: bookingTarget,
+    requiresAuth: true,
+  });
+};
+
 export const getVenues = async () => requestJson({ path: "/venues" });
 
 export const getSchedule = async ({ venue, date, nDays }) => {
