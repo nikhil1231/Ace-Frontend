@@ -19,6 +19,119 @@ const TIME_MARK_INTERVAL = 30;
 const PIXELS_PER_MINUTE = 1.2;
 const FALLBACK_DAY_START = 7 * 60;
 const FALLBACK_DAY_END = 22 * 60;
+const SCHEDULE_SEARCH_STORAGE_KEY = "ACE_SCHEDULE_SEARCH_V1";
+const MAX_RECENT_VENUES = 3;
+
+const DEFAULT_SEARCH_STATE = {
+  selectedVenue: "",
+  queryMode: "date",
+  selectedDate: getToday(),
+  nDays: String(DEFAULT_N_DAYS),
+  recentVenues: [],
+};
+
+const canUseStorage = () =>
+  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+
+const sanitizeDateValue = (value) => {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return getToday();
+  }
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : getToday();
+};
+
+const sanitizeNDaysValue = (value) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < MIN_N_DAYS) {
+    return String(DEFAULT_N_DAYS);
+  }
+
+  return String(parsed);
+};
+
+const sanitizeRecentVenues = (value) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const uniqueVenues = [];
+  value.forEach((venue) => {
+    if (
+      typeof venue === "string" &&
+      venue.trim().length > 0 &&
+      !uniqueVenues.includes(venue)
+    ) {
+      uniqueVenues.push(venue);
+    }
+  });
+
+  return uniqueVenues.slice(0, MAX_RECENT_VENUES);
+};
+
+const readPersistedSearchState = () => {
+  if (!canUseStorage()) {
+    return { ...DEFAULT_SEARCH_STATE };
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(SCHEDULE_SEARCH_STORAGE_KEY);
+    if (!rawValue) {
+      return { ...DEFAULT_SEARCH_STATE };
+    }
+
+    const parsed = JSON.parse(rawValue);
+    const selectedVenue =
+      typeof parsed?.selectedVenue === "string" ? parsed.selectedVenue : "";
+
+    return {
+      selectedVenue,
+      queryMode: parsed?.queryMode === "n_days" ? "n_days" : "date",
+      selectedDate: sanitizeDateValue(parsed?.selectedDate),
+      nDays: sanitizeNDaysValue(parsed?.nDays),
+      recentVenues: sanitizeRecentVenues(parsed?.recentVenues),
+    };
+  } catch (error) {
+    return { ...DEFAULT_SEARCH_STATE };
+  }
+};
+
+const persistSearchState = (nextState) => {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  const payload = {
+    selectedVenue:
+      typeof nextState?.selectedVenue === "string" ? nextState.selectedVenue : "",
+    queryMode: nextState?.queryMode === "n_days" ? "n_days" : "date",
+    selectedDate: sanitizeDateValue(nextState?.selectedDate),
+    nDays: sanitizeNDaysValue(nextState?.nDays),
+    recentVenues: sanitizeRecentVenues(nextState?.recentVenues),
+  };
+
+  try {
+    window.localStorage.setItem(
+      SCHEDULE_SEARCH_STORAGE_KEY,
+      JSON.stringify(payload)
+    );
+  } catch (error) {
+    // Ignore storage write errors, page remains functional without persistence.
+  }
+};
+
+const updateRecentVenues = (currentRecentVenues, nextVenue) => {
+  if (typeof nextVenue !== "string" || nextVenue.trim().length === 0) {
+    return sanitizeRecentVenues(currentRecentVenues);
+  }
+
+  return [
+    nextVenue,
+    ...sanitizeRecentVenues(currentRecentVenues).filter(
+      (venue) => venue !== nextVenue
+    ),
+  ].slice(0, MAX_RECENT_VENUES);
+};
 
 const normalizeDateKey = (value) => {
   if (!value || typeof value !== "string") {
@@ -70,7 +183,7 @@ const formatCurrency = (amount) => {
     return "Available";
   }
 
-  return `£${amount.toFixed(2)}`;
+  return `\u00A3${amount.toFixed(2)}`;
 };
 
 const sortCourts = (first, second) => {
@@ -160,11 +273,19 @@ const buildTimeMarks = (startTime, endTime) => {
 };
 
 const SchedulePage = () => {
+  const persistedSearchState = useMemo(() => readPersistedSearchState(), []);
   const [venues, setVenues] = useState([]);
-  const [selectedVenue, setSelectedVenue] = useState("");
-  const [queryMode, setQueryMode] = useState("date");
-  const [selectedDate, setSelectedDate] = useState(getToday());
-  const [nDays, setNDays] = useState(String(DEFAULT_N_DAYS));
+  const [selectedVenue, setSelectedVenue] = useState(
+    persistedSearchState.selectedVenue
+  );
+  const [queryMode, setQueryMode] = useState(persistedSearchState.queryMode);
+  const [selectedDate, setSelectedDate] = useState(
+    persistedSearchState.selectedDate
+  );
+  const [nDays, setNDays] = useState(persistedSearchState.nDays);
+  const [recentVenues, setRecentVenues] = useState(
+    persistedSearchState.recentVenues
+  );
   const [scheduleData, setScheduleData] = useState(null);
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
   const [isLoadingVenues, setIsLoadingVenues] = useState(true);
@@ -188,7 +309,16 @@ const SchedulePage = () => {
         }
 
         setVenues(normalizedVenues);
-        setSelectedVenue((currentVenue) => currentVenue || normalizedVenues[0] || "");
+        setSelectedVenue((currentVenue) =>
+          currentVenue && normalizedVenues.includes(currentVenue)
+            ? currentVenue
+            : normalizedVenues[0] || ""
+        );
+        setRecentVenues((currentRecentVenues) =>
+          currentRecentVenues
+            .filter((venue) => normalizedVenues.includes(venue))
+            .slice(0, MAX_RECENT_VENUES)
+        );
       } catch (requestError) {
         if (!isCancelled) {
           setError(requestError.message || "Failed to load venues.");
@@ -269,6 +399,11 @@ const SchedulePage = () => {
     gridTemplateColumns: `80px repeat(${timelineColumns}, minmax(180px, 1fr))`,
   };
 
+  const recentVenuePills = useMemo(
+    () => recentVenues.filter((venue) => venues.includes(venue)),
+    [recentVenues, venues]
+  );
+
   const handleScheduleRequest = async (event) => {
     event.preventDefault();
 
@@ -283,8 +418,13 @@ const SchedulePage = () => {
     }
 
     const parsedNDays = Number.parseInt(nDays, 10);
-    if (queryMode === "n_days" && (!Number.isInteger(parsedNDays) || parsedNDays < 1)) {
-      setError(`Please enter n_days as an integer greater than or equal to ${MIN_N_DAYS}.`);
+    if (
+      queryMode === "n_days" &&
+      (!Number.isInteger(parsedNDays) || parsedNDays < MIN_N_DAYS)
+    ) {
+      setError(
+        `Please enter n_days as an integer greater than or equal to ${MIN_N_DAYS}.`
+      );
       return;
     }
 
@@ -298,8 +438,17 @@ const SchedulePage = () => {
         nDays: queryMode === "n_days" ? parsedNDays : undefined,
       });
 
+      const nextRecentVenues = updateRecentVenues(recentVenues, selectedVenue);
       setScheduleData(nextSchedule);
       setCurrentDayIndex(0);
+      setRecentVenues(nextRecentVenues);
+      persistSearchState({
+        selectedVenue,
+        queryMode,
+        selectedDate,
+        nDays: queryMode === "n_days" ? String(parsedNDays) : nDays,
+        recentVenues: nextRecentVenues,
+      });
     } catch (requestError) {
       setError(requestError.message || "Failed to load schedule.");
     } finally {
@@ -345,6 +494,30 @@ const SchedulePage = () => {
                       </option>
                     ))}
                   </Form.Select>
+                  {recentVenuePills.length > 0 ? (
+                    <div className="schedule-recent-venues">
+                      <span className="schedule-recent-venues-label">Recent</span>
+                      {recentVenuePills.map((venue) => (
+                        <Button
+                          key={venue}
+                          type="button"
+                          size="sm"
+                          className="rounded-pill schedule-recent-venue-pill"
+                          variant={
+                            selectedVenue === venue
+                              ? "primary"
+                              : "outline-secondary"
+                          }
+                          onClick={() => {
+                            setSelectedVenue(venue);
+                            setError("");
+                          }}
+                        >
+                          {venue}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : null}
                 </Form.Group>
               </Col>
               <Col md={3}>
@@ -408,7 +581,11 @@ const SchedulePage = () => {
         </Card.Body>
       </Card>
 
-      {error ? <Alert variant="danger" className="mt-3">{error}</Alert> : null}
+      {error ? (
+        <Alert variant="danger" className="mt-3">
+          {error}
+        </Alert>
+      ) : null}
 
       {isLoadingSchedule ? (
         <div className="text-center py-5">
@@ -450,7 +627,10 @@ const SchedulePage = () => {
 
           <div className="schedule-timeline-shell">
             <div className="schedule-timeline-scroll">
-              <div className="schedule-timeline-grid schedule-timeline-header" style={timelineGridStyle}>
+              <div
+                className="schedule-timeline-grid schedule-timeline-header"
+                style={timelineGridStyle}
+              >
                 <div className="schedule-timeline-time-header">Time</div>
                 {currentDay.courts.map((court) => (
                   <div key={court.id} className="schedule-timeline-court-header">
@@ -459,7 +639,10 @@ const SchedulePage = () => {
                 ))}
               </div>
 
-              <div className="schedule-timeline-grid schedule-timeline-body" style={timelineGridStyle}>
+              <div
+                className="schedule-timeline-grid schedule-timeline-body"
+                style={timelineGridStyle}
+              >
                 <div className="schedule-time-column" style={{ height: `${dayHeight}px` }}>
                   {timeMarks.map((minute) => (
                     <span

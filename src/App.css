@@ -267,6 +267,26 @@
   margin-bottom: 0;
 }
 
+.schedule-recent-venues {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.schedule-recent-venues-label {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.schedule-recent-venue-pill {
+  font-size: 0.78rem;
+  line-height: 1.1;
+  padding: 0.28rem 0.6rem;
+}
+
 .schedule-pagination {
   align-items: center;
   display: flex;
