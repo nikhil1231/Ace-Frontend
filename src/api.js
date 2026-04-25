@@ -160,6 +160,49 @@ export const getSchedule = async ({ venue, date, nDays }) => {
   });
 };
 
+export const getAvailability = async ({
+  postcode,
+  maxVenues = 50,
+  date,
+  nDays,
+  minStartTime,
+  maxStartTime,
+  minEndTime,
+  maxEndTime,
+  minLength,
+}) => {
+  const hasDate = date !== undefined && date !== null && date !== "";
+  const hasNDays = nDays !== undefined && nDays !== null && nDays !== "";
+  const parsedMaxVenues = Number.parseInt(maxVenues, 10);
+
+  if (!postcode || String(postcode).trim().length === 0) {
+    throw new Error("Postcode or outcode is required.");
+  }
+
+  if (!Number.isInteger(parsedMaxVenues) || parsedMaxVenues < 1) {
+    throw new Error("Max venues must be an integer greater than or equal to 1.");
+  }
+
+  if ((hasDate && hasNDays) || (!hasDate && !hasNDays)) {
+    throw new Error("Provide either date or n_days, but not both.");
+  }
+
+  return requestJson({
+    path: "/schedule/availability",
+    query: {
+      postcode: String(postcode).trim(),
+      max_venues: parsedMaxVenues,
+      date: hasDate ? date : undefined,
+      n_days: hasNDays ? nDays : undefined,
+      min_start_time: minStartTime,
+      max_start_time: maxStartTime,
+      min_end_time: minEndTime,
+      max_end_time: maxEndTime,
+      min_length: minLength,
+    },
+  });
+};
+
 export const getVenueAddresses = async () =>
   requestJson({ path: "/venues/addresses" });
 
