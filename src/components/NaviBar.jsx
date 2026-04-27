@@ -24,9 +24,6 @@ const Navibar = () => {
             <Nav.Link as={NavLink} to="/" end>
               Bookings
             </Nav.Link>
-            <Nav.Link as={NavLink} to="/targets">
-              Targets
-            </Nav.Link>
             <Nav.Link as={NavLink} to="/schedule">
               Schedule
             </Nav.Link>

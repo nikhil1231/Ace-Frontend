@@ -9,7 +9,6 @@ import MapPage from "./pages/MapPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import SchedulePage from "./pages/SchedulePage";
 import SettingsPage from "./pages/SettingsPage";
-import TargetsPage from "./pages/TargetsPage";
 import AdminPage from "./pages/admin/AdminPage";
 import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
 import AdminSectionPage from "./pages/admin/AdminSectionPage";
@@ -38,7 +37,7 @@ const AppShell = () => {
       <main className="app-main">
         <Routes>
           <Route path="/" element={<BookingsPage />} />
-          <Route path="/targets" element={<TargetsPage />} />
+          <Route path="/targets" element={<Navigate to="/" replace />} />
           <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/settings" element={<SettingsPage />} />
