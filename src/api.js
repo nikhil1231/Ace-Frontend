@@ -162,6 +162,48 @@ export const deleteBookingTarget = async (bookingTarget) => {
   });
 };
 
+export const bookTargets = async () =>
+  requestJson({
+    method: "POST",
+    path: "/booking/book",
+    requiresAuth: true,
+  });
+
+export const bookTargetNow = async (bookingTarget, { dryRun = true } = {}) => {
+  if (!bookingTarget || typeof bookingTarget !== "object") {
+    throw new Error("Booking target payload is required.");
+  }
+
+  return requestJson({
+    method: "POST",
+    path: "/booking/targets/book",
+    query: {
+      dry_run: Boolean(dryRun),
+    },
+    body: bookingTarget,
+    requiresAuth: true,
+  });
+};
+
+export const findBookableSlots = async (bookingTarget) => {
+  if (!bookingTarget || typeof bookingTarget !== "object") {
+    throw new Error("Booking target payload is required.");
+  }
+
+  return requestJson({
+    method: "POST",
+    path: "/booking/targets/find",
+    body: bookingTarget,
+  });
+};
+
+export const cleanBookingTargets = async () =>
+  requestJson({
+    method: "POST",
+    path: "/booking/targets/clean",
+    requiresAuth: true,
+  });
+
 export const getVenues = async () => requestJson({ path: "/venues" });
 
 export const getSchedule = async ({ venue, date, nDays }) => {
