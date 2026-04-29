@@ -9,6 +9,7 @@ import MapPage from "./pages/MapPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import SchedulePage from "./pages/SchedulePage";
 import SettingsPage from "./pages/SettingsPage";
+import VenuePage from "./pages/VenuePage";
 import AdminPage from "./pages/admin/AdminPage";
 import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
 import AdminSectionPage from "./pages/admin/AdminSectionPage";
@@ -39,6 +40,7 @@ const AppShell = () => {
           <Route path="/" element={<BookingsPage />} />
           <Route path="/targets" element={<Navigate to="/" replace />} />
           <Route path="/schedule" element={<SchedulePage />} />
+          <Route path="/venue" element={<VenuePage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route element={<RequireAdminAccess />}>

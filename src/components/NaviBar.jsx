@@ -27,6 +27,9 @@ const Navibar = () => {
             <Nav.Link as={NavLink} to="/schedule">
               Schedule
             </Nav.Link>
+            <Nav.Link as={NavLink} to="/venue">
+              Venue
+            </Nav.Link>
             <Nav.Link as={NavLink} to="/map">
               Map
             </Nav.Link>
