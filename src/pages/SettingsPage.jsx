@@ -14,18 +14,53 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAppSettings } from "../context/AppSettingsContext";
 
+const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "");
+
+const getHealthcheckUrl = (baseUrl) => `${normalizeBaseUrl(baseUrl)}/health`;
+
+const checkBackendHealth = async (baseUrl, timeoutMs = 5000) => {
+  const url = normalizeBaseUrl(baseUrl);
+  if (!url) {
+    return false;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(getHealthcheckUrl(url), {
+      method: "GET",
+      signal: controller.signal,
+    });
+    return response.ok;
+  } catch (error) {
+    return false;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
+
 const SettingsPage = () => {
   const {
     backendUrl,
+    backendUrls,
     clearToken,
+    defaultBackendUrls,
     environments,
     hasAdminAccess,
     selectedEnvironment,
+    setBackendUrls,
     setSelectedEnvironment,
     setToken,
     token,
   } = useAppSettings();
   const [draftToken, setDraftToken] = useState(token);
+  const [draftBackendUrls, setDraftBackendUrls] = useState(backendUrls);
+  const [healthStatuses, setHealthStatuses] = useState({
+    local: null,
+    hosted: null,
+  });
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -33,10 +68,48 @@ const SettingsPage = () => {
     setDraftToken(token);
   }, [selectedEnvironment, token]);
 
+  useEffect(() => {
+    setDraftBackendUrls(backendUrls);
+  }, [backendUrls]);
+
   const redirectedFrom = location.state?.redirectTo;
 
   const handleSave = () => {
     setToken(draftToken);
+  };
+
+  const handleSaveBackendUrls = () => {
+    setBackendUrls(draftBackendUrls);
+    const nextHealthStatuses = {};
+
+    setIsCheckingHealth(true);
+    Promise.all(
+      environments.map(async (environment) => {
+        const configuredUrl =
+          draftBackendUrls[environment.key] || defaultBackendUrls[environment.key];
+        const isHealthy = await checkBackendHealth(configuredUrl);
+        nextHealthStatuses[environment.key] = isHealthy;
+      })
+    )
+      .then(() => {
+        setHealthStatuses((previousValue) => ({
+          ...previousValue,
+          ...nextHealthStatuses,
+        }));
+      })
+      .finally(() => setIsCheckingHealth(false));
+  };
+
+  const handleResetBackendUrls = () => {
+    setDraftBackendUrls(defaultBackendUrls);
+    setBackendUrls(defaultBackendUrls);
+  };
+
+  const handleBackendUrlChange = (environment, value) => {
+    setDraftBackendUrls((previousValue) => ({
+      ...previousValue,
+      [environment]: value,
+    }));
   };
 
   const handleClear = () => {
@@ -96,6 +169,66 @@ const SettingsPage = () => {
                   <Form.Text muted>
                     Requests will be sent to <code>{backendUrl}</code>.
                   </Form.Text>
+                </Form.Group>
+
+                <Form.Group className="mb-4">
+                  <Form.Label>Backend URLs</Form.Label>
+                  <Row className="g-3">
+                    {environments.map((environment) => (
+                      <Col md={6} key={environment.key}>
+                        <Form.Label className="small text-muted d-flex align-items-center gap-2">
+                          {environment.label}
+                          <span
+                            className={`backend-health-dot ${
+                              healthStatuses[environment.key] === null
+                                ? "backend-health-unknown"
+                                : healthStatuses[environment.key]
+                                ? "backend-health-up"
+                                : "backend-health-down"
+                            }`}
+                            title={
+                              healthStatuses[environment.key] === null
+                                ? "Health check not run yet."
+                                : healthStatuses[environment.key]
+                                ? "Service is reachable."
+                                : "Service health check failed."
+                            }
+                          />
+                        </Form.Label>
+                        <Form.Control
+                          type="url"
+                          value={draftBackendUrls[environment.key] || ""}
+                          onChange={(event) =>
+                            handleBackendUrlChange(
+                              environment.key,
+                              event.target.value
+                            )
+                          }
+                          placeholder={`Enter ${environment.label.toLowerCase()} backend URL`}
+                        />
+                      </Col>
+                    ))}
+                  </Row>
+                  <Form.Text muted>
+                    These URLs are saved in your browser only.
+                  </Form.Text>
+                  <div className="d-flex flex-wrap gap-2 mt-3">
+                    <Button
+                      variant="outline-primary"
+                      onClick={handleSaveBackendUrls}
+                      disabled={isCheckingHealth}
+                    >
+                      {isCheckingHealth
+                        ? "Checking backend health..."
+                        : "Save backend URLs"}
+                    </Button>
+                    <Button
+                      variant="outline-secondary"
+                      onClick={handleResetBackendUrls}
+                    >
+                      Reset default URLs
+                    </Button>
+                  </div>
                 </Form.Group>
 
                 <Form.Group className="mb-3">
