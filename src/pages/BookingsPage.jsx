@@ -237,28 +237,31 @@ const BookingsPage = () => {
     [bookingTargets]
   );
 
-  const loadBookings = useCallback(async ({ initial = false } = {}) => {
-    if (initial) {
-      setIsLoadingBookings(true);
-    } else {
-      setIsRefreshingBookings(true);
-    }
-
-    try {
-      const data = await getBookings();
-      setBookings(regroupBookings(Array.isArray(data?.bookings) ? data.bookings : []));
-      setLastUpdatedTime(data?.lastUpdated || null);
-      setBookingsError("");
-    } catch (requestError) {
-      setBookingsError(requestError.message || "Failed to load bookings.");
-    } finally {
+  const loadBookings = useCallback(
+    async ({ initial = false, background = false } = {}) => {
       if (initial) {
-        setIsLoadingBookings(false);
-      } else {
-        setIsRefreshingBookings(false);
+        setIsLoadingBookings(true);
+      } else if (!background) {
+        setIsRefreshingBookings(true);
       }
-    }
-  }, []);
+
+      try {
+        const data = await getBookings();
+        setBookings(regroupBookings(Array.isArray(data?.bookings) ? data.bookings : []));
+        setLastUpdatedTime(data?.lastUpdated || null);
+        setBookingsError("");
+      } catch (requestError) {
+        setBookingsError(requestError.message || "Failed to load bookings.");
+      } finally {
+        if (initial) {
+          setIsLoadingBookings(false);
+        } else if (!background) {
+          setIsRefreshingBookings(false);
+        }
+      }
+    },
+    []
+  );
 
   const loadBookingTargets = useCallback(async ({ initial = false } = {}) => {
     if (initial) {
@@ -322,6 +325,17 @@ const BookingsPage = () => {
     loadBookingTargets({ initial: true });
     loadVenues();
   }, [loadBookings, loadBookingTargets, loadVenues]);
+
+  useEffect(() => {
+    const pollIntervalMs = 2500;
+    const intervalId = window.setInterval(() => {
+      loadBookings({ background: true });
+    }, pollIntervalMs);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [loadBookings]);
 
   const clearGlobalFeedback = () => {
     setGlobalActionError("");
