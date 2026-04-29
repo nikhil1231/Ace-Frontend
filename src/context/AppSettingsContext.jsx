@@ -4,7 +4,9 @@ import {
   clearToken as clearStoredToken,
   getBackendOptions,
   getBackendUrl,
+  getDefaultBackendUrls,
   readAppSettings,
+  setBackendUrls as persistBackendUrls,
   setSelectedEnvironment as persistSelectedEnvironment,
   setToken as persistToken,
   subscribeToSettingsChange,
@@ -28,10 +30,13 @@ export const AppSettingsProvider = ({ children }) => {
     environments: getBackendOptions(),
     selectedEnvironment,
     backendUrl: getBackendUrl(selectedEnvironment),
+    backendUrls: settings.backendUrls,
+    defaultBackendUrls: getDefaultBackendUrls(),
     token,
     hasAdminAccess: Boolean(token.trim()),
     setSelectedEnvironment: (environment) =>
       setSettings(persistSelectedEnvironment(environment)),
+    setBackendUrls: (backendUrls) => setSettings(persistBackendUrls(backendUrls)),
     setToken: (value, environment = selectedEnvironment) =>
       setSettings(persistToken(value, environment)),
     clearToken: (environment = selectedEnvironment) =>

@@ -13,16 +13,23 @@ const HOSTED_BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL ||
   "https://ace-tennis-9353ae97c95f.herokuapp.com";
 
+const normalizeUrl = (url) => String(url || "").trim().replace(/\/+$/, "");
+
+const DEFAULT_BACKEND_URLS = {
+  local: normalizeUrl(LOCAL_BACKEND_URL),
+  hosted: normalizeUrl(HOSTED_BACKEND_URL),
+};
+
 export const BACKEND_ENVIRONMENTS = {
   local: {
     key: "local",
     label: "Local",
-    url: LOCAL_BACKEND_URL,
+    url: DEFAULT_BACKEND_URLS.local,
   },
   hosted: {
     key: "hosted",
     label: "Hosted",
-    url: HOSTED_BACKEND_URL,
+    url: DEFAULT_BACKEND_URLS.hosted,
   },
 };
 
@@ -31,6 +38,9 @@ const DEFAULT_APP_SETTINGS = {
   tokens: {
     local: "",
     hosted: "",
+  },
+  backendUrls: {
+    ...DEFAULT_BACKEND_URLS,
   },
 };
 
@@ -64,14 +74,20 @@ const writeStoredJson = (key, value) => {
   window.localStorage.setItem(key, JSON.stringify(value));
 };
 
-const normalizeUrl = (url) => url.replace(/\/+$/, "");
-
 const buildDefaultSettings = () => ({
   selectedEnvironment: DEFAULT_APP_SETTINGS.selectedEnvironment,
   tokens: {
     ...DEFAULT_APP_SETTINGS.tokens,
   },
+  backendUrls: {
+    ...DEFAULT_APP_SETTINGS.backendUrls,
+  },
 });
+
+const resolveEnvironmentKey = (environment) =>
+  BACKEND_ENVIRONMENTS[environment]
+    ? environment
+    : DEFAULT_BACKEND_ENVIRONMENT;
 
 export const deepClone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -79,15 +95,22 @@ export const getToday = () => new Date().toISOString().slice(0, 10);
 
 export const readAppSettings = () => {
   const storedValue = readStoredJson(APP_SETTINGS_KEY, {});
-  const selectedEnvironment = BACKEND_ENVIRONMENTS[storedValue.selectedEnvironment]
-    ? storedValue.selectedEnvironment
-    : DEFAULT_BACKEND_ENVIRONMENT;
+  const selectedEnvironment = resolveEnvironmentKey(
+    storedValue.selectedEnvironment
+  );
 
   return {
     selectedEnvironment,
     tokens: {
       local: storedValue.tokens?.local || "",
       hosted: storedValue.tokens?.hosted || "",
+    },
+    backendUrls: {
+      local:
+        normalizeUrl(storedValue.backendUrls?.local) || DEFAULT_BACKEND_URLS.local,
+      hosted:
+        normalizeUrl(storedValue.backendUrls?.hosted) ||
+        DEFAULT_BACKEND_URLS.hosted,
     },
   };
 };
@@ -102,21 +125,55 @@ export const getSelectedEnvironment = () => readAppSettings().selectedEnvironmen
 
 export const setSelectedEnvironment = (environment) => {
   const settings = readAppSettings();
-  settings.selectedEnvironment = BACKEND_ENVIRONMENTS[environment]
-    ? environment
-    : DEFAULT_BACKEND_ENVIRONMENT;
+  settings.selectedEnvironment = resolveEnvironmentKey(environment);
 
   return saveAppSettings(settings);
 };
 
 export const getBackendOptions = () => Object.values(BACKEND_ENVIRONMENTS);
 
-export const getBackendUrl = (environment = getSelectedEnvironment()) => {
-  const config =
-    BACKEND_ENVIRONMENTS[environment] ||
-    BACKEND_ENVIRONMENTS[DEFAULT_BACKEND_ENVIRONMENT];
+export const getDefaultBackendUrl = (environment) =>
+  DEFAULT_BACKEND_URLS[resolveEnvironmentKey(environment)];
 
-  return normalizeUrl(config.url);
+export const getDefaultBackendUrls = () => ({ ...DEFAULT_BACKEND_URLS });
+
+export const getBackendUrl = (environment = getSelectedEnvironment()) => {
+  const settings = readAppSettings();
+  const environmentKey = resolveEnvironmentKey(environment);
+  const configuredUrl = normalizeUrl(settings.backendUrls?.[environmentKey]);
+
+  return configuredUrl || getDefaultBackendUrl(environmentKey);
+};
+
+export const setBackendUrl = (url, environment = getSelectedEnvironment()) => {
+  const settings = readAppSettings();
+  const environmentKey = resolveEnvironmentKey(environment);
+  const normalizedUrl = normalizeUrl(url);
+
+  settings.backendUrls[environmentKey] =
+    normalizedUrl || getDefaultBackendUrl(environmentKey);
+
+  return saveAppSettings(settings);
+};
+
+export const setBackendUrls = (backendUrls = {}) => {
+  const settings = readAppSettings();
+
+  Object.keys(BACKEND_ENVIRONMENTS).forEach((environment) => {
+    const normalizedUrl = normalizeUrl(backendUrls[environment]);
+    settings.backendUrls[environment] =
+      normalizedUrl || getDefaultBackendUrl(environment);
+  });
+
+  return saveAppSettings(settings);
+};
+
+export const resetBackendUrl = (environment = getSelectedEnvironment()) => {
+  const settings = readAppSettings();
+  const environmentKey = resolveEnvironmentKey(environment);
+
+  settings.backendUrls[environmentKey] = getDefaultBackendUrl(environmentKey);
+  return saveAppSettings(settings);
 };
 
 export const getToken = (environment = getSelectedEnvironment()) => {

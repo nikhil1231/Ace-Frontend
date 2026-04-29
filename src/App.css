@@ -55,6 +55,25 @@
   font-size: 0.92rem;
 }
 
+.backend-health-dot {
+  border-radius: 50%;
+  display: inline-block;
+  height: 0.72rem;
+  width: 0.72rem;
+}
+
+.backend-health-up {
+  background: #16a34a;
+}
+
+.backend-health-down {
+  background: #dc2626;
+}
+
+.backend-health-unknown {
+  background: #94a3b8;
+}
+
 .compact-subtitle {
   margin-bottom: 1rem;
 }
