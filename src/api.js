@@ -206,6 +206,33 @@ export const cleanBookingTargets = async () =>
 
 export const getVenues = async () => requestJson({ path: "/venues" });
 
+export const getVenueName = async (venue) =>
+  requestJson({
+    path: "/venues/name",
+    query: {
+      venue,
+    },
+  });
+
+export const getVenueAddress = async (venue) =>
+  requestJson({
+    path: "/venues/address",
+    query: {
+      venue,
+    },
+  });
+
+export const getVenueSettings = async (venue) =>
+  requestJson({
+    path: "/venues/settings",
+    query: {
+      venue,
+    },
+  });
+
+export const getRecentlyUsedVenues = async () =>
+  requestJson({ path: "/venues/recently-used" });
+
 export const getSchedule = async ({ venue, date, nDays }) => {
   const hasDate = date !== undefined && date !== null && date !== "";
   const hasNDays = nDays !== undefined && nDays !== null && nDays !== "";
