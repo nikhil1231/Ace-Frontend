@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Badge,
@@ -25,6 +25,7 @@ import {
   putBookingTarget,
   refreshBookings,
 } from "../api";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { fdate, fdatetime, getToday, minutesToTime, timeToMinutes } from "../util";
 
@@ -194,6 +195,9 @@ const buildBookingTargetPayload = (formValues) => {
 };
 
 const BookingsPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const targetActionsRef = useRef(null);
   const { hasAdminAccess } = useAppSettings();
   const [bookings, setBookings] = useState({});
   const [lastUpdatedTime, setLastUpdatedTime] = useState(null);
@@ -325,6 +329,50 @@ const BookingsPage = () => {
     loadBookingTargets({ initial: true });
     loadVenues();
   }, [loadBookings, loadBookingTargets, loadVenues]);
+
+  useEffect(() => {
+    const prefill = location.state?.targetActionPrefill;
+    if (!prefill || typeof prefill !== "object") {
+      return;
+    }
+
+    setTargetActionValues((currentValue) => ({
+      ...currentValue,
+      venue:
+        typeof prefill.venue === "string" ? prefill.venue : currentValue.venue,
+      date: typeof prefill.date === "string" ? prefill.date : currentValue.date,
+      startTime:
+        typeof prefill.startTime === "string"
+          ? prefill.startTime
+          : currentValue.startTime,
+      endTime:
+        typeof prefill.endTime === "string" ? prefill.endTime : currentValue.endTime,
+      numCourts:
+        typeof prefill.numCourts === "string"
+          ? prefill.numCourts
+          : currentValue.numCourts,
+      recurringWeekly: Boolean(prefill.recurringWeekly),
+    }));
+
+    const pipedSlots = Array.isArray(prefill.slotOptions) ? prefill.slotOptions : [];
+    setFindResultRaw(pipedSlots);
+    setFindResultSlots(normalizeFindSlots(pipedSlots));
+    setTargetActionError("");
+    setTargetActionSuccess(
+      pipedSlots.length > 0
+        ? `Loaded ${pipedSlots.length} slot option(s) from availability.`
+        : "Target action inputs prefilled from availability."
+    );
+
+    window.requestAnimationFrame(() => {
+      targetActionsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     const pollIntervalMs = 2500;
@@ -628,8 +676,9 @@ const BookingsPage = () => {
         <Alert variant="success">{globalActionSuccess}</Alert>
       ) : null}
 
-      <Card className="surface-card mb-4">
-        <Card.Body>
+      <div ref={targetActionsRef}>
+        <Card className="surface-card mb-4">
+          <Card.Body>
           <Card.Title>Bookings Cache</Card.Title>
           {bookingsError ? <Alert variant="danger">{bookingsError}</Alert> : null}
           {isLoadingBookings ? (
@@ -1090,8 +1139,9 @@ const BookingsPage = () => {
               </div>
             </section>
           ) : null}
-        </Card.Body>
-      </Card>
+          </Card.Body>
+        </Card>
+      </div>
     </Container>
   );
 };
