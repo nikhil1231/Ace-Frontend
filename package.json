@@ -10,7 +10,6 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "bootstrap": "^5.3.0",
-    "gh-pages": "^5.0.0",
     "react": "^18.2.0",
     "react-bootstrap": "^2.7.4",
     "react-dom": "^18.2.0",
@@ -25,8 +24,7 @@
     "prestart": "npm run admin:sync",
     "prebuild": "npm run admin:sync",
     "start": "react-scripts start",
-    "build": "REACT_APP_BACKEND_URL=https://ace-tennis-9353ae97c95f.herokuapp.com react-scripts build",
-    "deploy": "gh-pages -d build",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
