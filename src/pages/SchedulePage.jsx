@@ -1,18 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  Badge,
   Button,
   Card,
   Col,
   Container,
   Form,
-  ListGroup,
   Row,
   Spinner,
 } from "react-bootstrap";
 
 import { getAvailability, getSchedule, getVenues } from "../api";
+import AvailabilityResultsPanel from "../components/AvailabilityResultsPanel";
 import { getToday, minutesToTime } from "../util";
 
 const MIN_N_DAYS = 1;
@@ -309,14 +308,6 @@ const formatCurrency = (amount) => {
   return `\u00A3${amount.toFixed(2)}`;
 };
 
-const formatDistance = (distance) => {
-  if (typeof distance !== "number" || Number.isNaN(distance)) {
-    return "Distance unavailable";
-  }
-
-  return `${distance.toFixed(1)} km`;
-};
-
 const sortCourts = (first, second) => {
   const firstNumber =
     typeof first?.Number === "number" && Number.isFinite(first.Number)
@@ -393,76 +384,6 @@ const buildTimelineDays = (schedule) => {
       };
     }),
   }));
-};
-
-const buildAvailabilityGroups = (slots) => {
-  if (!Array.isArray(slots)) {
-    return [];
-  }
-
-  const groupedSlots = new Map();
-
-  slots.forEach((slot, index) => {
-    const dateKey = normalizeDateKey(slot?.Date);
-    if (!dateKey) {
-      return;
-    }
-
-    const parsedStartTime = Number(slot?.StartTime);
-    const parsedEndTime = Number(slot?.EndTime);
-    const parsedDistance = Number(slot?.Distance);
-
-    const startTime = Number.isFinite(parsedStartTime) ? parsedStartTime : 0;
-    const endTime = Number.isFinite(parsedEndTime) ? parsedEndTime : startTime;
-    const distance = Number.isFinite(parsedDistance) ? parsedDistance : null;
-    const venueName =
-      typeof slot?.VenueName === "string" && slot.VenueName.trim().length > 0
-        ? slot.VenueName
-        : slot?.Venue || "Unknown venue";
-
-    if (!groupedSlots.has(dateKey)) {
-      groupedSlots.set(dateKey, []);
-    }
-
-    groupedSlots.get(dateKey).push({
-      id: `${dateKey}-${slot?.SessionID || slot?.Venue || "slot"}-${index}`,
-      venueName,
-      venue: slot?.Venue || "",
-      name: slot?.Name || "",
-      courtNumber:
-        typeof slot?.CourtNumber === "number" && Number.isFinite(slot.CourtNumber)
-          ? slot.CourtNumber
-          : null,
-      startTime,
-      endTime,
-      cost:
-        typeof slot?.Cost === "number" && Number.isFinite(slot.Cost)
-          ? slot.Cost
-          : null,
-      distance,
-      bookingLink: slot?.BookingLink || null,
-    });
-  });
-
-  return [...groupedSlots.entries()]
-    .sort(([firstDate], [secondDate]) => firstDate.localeCompare(secondDate))
-    .map(([dateKey, daySlots]) => ({
-      dateKey,
-      slots: daySlots
-        .filter((slot) => slot.endTime > slot.startTime)
-        .sort((first, second) => {
-          const firstDistance =
-            first.distance === null ? Number.POSITIVE_INFINITY : first.distance;
-          const secondDistance =
-            second.distance === null ? Number.POSITIVE_INFINITY : second.distance;
-
-          return (
-            firstDistance - secondDistance ||
-            first.startTime - second.startTime ||
-            first.venueName.localeCompare(second.venueName)
-          );
-        }),
-    }));
 };
 
 const buildTimeMarks = (startTime, endTime) => {
@@ -579,10 +500,6 @@ const SchedulePage = () => {
   }, []);
 
   const timelineDays = useMemo(() => buildTimelineDays(scheduleData), [scheduleData]);
-  const availabilityGroups = useMemo(
-    () => buildAvailabilityGroups(availabilitySlots),
-    [availabilitySlots]
-  );
   const currentDay = timelineDays[currentDayIndex] || null;
 
   const sessionBounds = useMemo(() => {
@@ -836,6 +753,8 @@ const SchedulePage = () => {
 
   const canGoNextDay = currentDayIndex < timelineDays.length - 1;
   const canGoPrevDay = currentDayIndex > 0;
+  const hasAvailabilityResults =
+    Array.isArray(availabilitySlots) && availabilitySlots.length > 0;
 
   return (
     <Container className="page-container">
@@ -1211,7 +1130,7 @@ const SchedulePage = () => {
       {!isLoadingResults &&
       searchMode === "availability" &&
       Array.isArray(availabilitySlots) &&
-      availabilityGroups.length === 0 ? (
+      availabilitySlots.length === 0 ? (
         <Alert variant="secondary" className="mt-3">
           No available slots matched the selected filters.
         </Alert>
@@ -1322,53 +1241,15 @@ const SchedulePage = () => {
 
       {!isLoadingResults &&
       searchMode === "availability" &&
-      availabilityGroups.length > 0 ? (
-        <section className="mt-4">
-          {availabilityGroups.map((day) => (
-            <Card key={day.dateKey} className="surface-card mb-3">
-              <Card.Header className="d-flex justify-content-between align-items-center">
-                <strong>{formatDayHeading(day.dateKey)}</strong>
-                <Badge bg="secondary">{day.slots.length} slots</Badge>
-              </Card.Header>
-              <ListGroup variant="flush">
-                {day.slots.map((slot) => (
-                  <ListGroup.Item key={slot.id}>
-                    <div className="d-flex justify-content-between flex-wrap gap-2">
-                      <div>
-                        <strong>{slot.venueName}</strong>
-                        <div className="text-muted small">
-                          {slot.name || "Court slot"}
-                          {slot.courtNumber ? ` · Court ${slot.courtNumber}` : ""}
-                        </div>
-                      </div>
-                      <div className="text-end">
-                        <div>
-                          {minutesToTime(slot.startTime)} - {minutesToTime(slot.endTime)}
-                        </div>
-                        <div className="text-muted small">
-                          {formatCurrency(slot.cost)} · {formatDistance(slot.distance)}
-                        </div>
-                      </div>
-                    </div>
-                    {slot.bookingLink ? (
-                      <a
-                        href={slot.bookingLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="small"
-                      >
-                        Open booking page
-                      </a>
-                    ) : null}
-                  </ListGroup.Item>
-                ))}
-              </ListGroup>
-            </Card>
-          ))}
-        </section>
+      hasAvailabilityResults ? (
+        <AvailabilityResultsPanel
+          slots={availabilitySlots}
+          searchPostcode={availabilityPostcode}
+        />
       ) : null}
     </Container>
   );
 };
 
 export default SchedulePage;
+
