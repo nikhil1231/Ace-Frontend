@@ -1,16 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Col,
-  Container,
-  Form,
-  ListGroup,
-  Row,
-  Spinner,
-} from "react-bootstrap";
+import { Alert, Container, Spinner } from "react-bootstrap";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   bookTargetNow,
@@ -25,9 +15,13 @@ import {
   putBookingTarget,
   refreshBookings,
 } from "../api";
-import { useLocation, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { fdate, fdatetime, getToday, minutesToTime, timeToMinutes } from "../util";
+import { fdatetime, getToday, minutesToTime, timeToMinutes } from "../util";
+
+import "./BookingsPage.css";
+
+const TARGET_TAB = "targets";
+const ACTIONS_TAB = "actions";
 
 const buildDefaultTargetFormValues = () => ({
   venue: "",
@@ -48,6 +42,7 @@ const regroupBookings = (bookings) => {
     if (!groupedBookings[booking.Date]) {
       groupedBookings[booking.Date] = [];
     }
+
     groupedBookings[booking.Date].push(booking);
   });
 
@@ -106,37 +101,67 @@ const formatPrice = (value) => {
   return Number.isFinite(amount) ? `\u00A3${amount.toFixed(2)}` : "Price unavailable";
 };
 
-const normalizeFindSlots = (payload) => {
-  if (!Array.isArray(payload)) {
-    return [];
+const parseMinutesValue = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
   }
 
-  return payload
+  if (typeof value === "string" && value.includes(":")) {
+    const minutes = timeToMinutes(value);
+    return minutes === "" ? null : Number(minutes);
+  }
+
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const extractSlotsPayload = (payload) => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (payload && typeof payload === "object") {
+    if (Array.isArray(payload.slots)) {
+      return payload.slots;
+    }
+
+    if (Array.isArray(payload.Slots)) {
+      return payload.Slots;
+    }
+  }
+
+  return [];
+};
+
+const normalizeFindSlots = (payload) =>
+  extractSlotsPayload(payload)
     .filter((slot) => slot && typeof slot === "object")
     .map((slot, index) => {
-      const startTime = Number(slot.StartTime);
-      const endTime = Number(slot.EndTime);
-      const cost = Number(slot.Cost);
-      const dateValue =
-        typeof slot.Date === "string" && slot.Date.trim().length > 0
-          ? slot.Date
-          : "";
-      const sessionId =
-        typeof slot.SessionID === "string" && slot.SessionID.trim().length > 0
-          ? slot.SessionID
-          : `${dateValue}-${index}`;
-      const courtNumber = Number(slot.CourtNumber);
+      const startTime = parseMinutesValue(
+        slot.StartTime ?? slot.startTime ?? slot.start ?? slot.start_time
+      );
+      const endTime = parseMinutesValue(
+        slot.EndTime ?? slot.endTime ?? slot.end ?? slot.end_time
+      );
+      const cost = Number(slot.Cost ?? slot.cost ?? slot.Price);
+      const dateValue = String(slot.Date ?? slot.date ?? "").trim();
+      const sessionId = String(slot.SessionID ?? slot.sessionId ?? "").trim();
+      const courtNumber = Number(slot.CourtNumber ?? slot.courtNumber ?? slot.court);
+      const venueName = String(
+        slot.VenueName ?? slot.venueName ?? slot.Venue ?? slot.venue ?? ""
+      ).trim();
+      const slotName = String(slot.Name ?? slot.name ?? "").trim();
 
       return {
-        id: `${slot.Venue || "venue"}-${sessionId}-${index}`,
-        venue: slot.VenueName || slot.Venue || "Unknown venue",
-        name: slot.Name || "Court slot",
+        id: `${venueName || "venue"}-${sessionId || index}-${index}`,
+        venue: venueName || "Unknown venue",
+        name: slotName || "Court slot",
         date: dateValue,
         startTime: Number.isFinite(startTime) ? startTime : 0,
         endTime: Number.isFinite(endTime) ? endTime : 0,
         courtNumber: Number.isFinite(courtNumber) ? courtNumber : null,
         cost: Number.isFinite(cost) ? cost : null,
-        bookingLink: slot.BookingLink || "",
+        bookingLink: String(slot.BookingLink ?? slot.bookingLink ?? "").trim(),
       };
     })
     .sort((first, second) => {
@@ -152,7 +177,6 @@ const normalizeFindSlots = (payload) => {
 
       return first.venue.localeCompare(second.venue);
     });
-};
 
 const buildBookingTargetPayload = (formValues) => {
   const venue = formValues.venue.trim();
@@ -194,11 +218,60 @@ const buildBookingTargetPayload = (formValues) => {
   };
 };
 
+const getSafeDate = (value) => {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getDayHeading = (value) => {
+  const date = getSafeDate(value);
+
+  if (!date) {
+    return {
+      weekday: "Unknown",
+      dateLabel: String(value || "Unknown date"),
+    };
+  }
+
+  return {
+    weekday: date.toLocaleDateString("en-GB", { weekday: "short" }),
+    dateLabel: date.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+    }),
+  };
+};
+
+const getRelativeDayLabel = (value) => {
+  const date = getSafeDate(value);
+
+  if (!date) {
+    return "";
+  }
+
+  const today = new Date();
+  const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((target - current) / 86400000);
+
+  if (diffDays === 0) {
+    return "today";
+  }
+
+  if (diffDays > 0) {
+    return `in ${diffDays} day${diffDays === 1 ? "" : "s"}`;
+  }
+
+  const elapsed = Math.abs(diffDays);
+  return `${elapsed} day${elapsed === 1 ? "" : "s"} ago`;
+};
+
 const BookingsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const targetActionsRef = useRef(null);
+  const targetsPanelRef = useRef(null);
   const { hasAdminAccess } = useAppSettings();
+
   const [bookings, setBookings] = useState({});
   const [lastUpdatedTime, setLastUpdatedTime] = useState(null);
   const [bookingTargets, setBookingTargets] = useState([]);
@@ -235,11 +308,34 @@ const BookingsPage = () => {
   const [dryRun, setDryRun] = useState(true);
   const [findResultRaw, setFindResultRaw] = useState(null);
   const [findResultSlots, setFindResultSlots] = useState([]);
+  const [activeTab, setActiveTab] = useState(TARGET_TAB);
 
   const sortedTargets = useMemo(
     () => [...bookingTargets].sort(sortBookingTargets),
     [bookingTargets]
   );
+
+  const totalBookings = useMemo(
+    () =>
+      Object.values(bookings).reduce(
+        (count, bookingList) => count + bookingList.length,
+        0
+      ),
+    [bookings]
+  );
+
+  const matchedSlotsCount = useMemo(() => {
+    const start = timeToMinutes(targetActionValues.startTime);
+    const end = timeToMinutes(targetActionValues.endTime);
+
+    if (start === "" || end === "") {
+      return 0;
+    }
+
+    return findResultSlots.filter(
+      (slot) => slot.startTime === start && slot.endTime === end
+    ).length;
+  }, [findResultSlots, targetActionValues.endTime, targetActionValues.startTime]);
 
   const loadBookings = useCallback(
     async ({ initial = false, background = false } = {}) => {
@@ -302,6 +398,7 @@ const BookingsPage = () => {
         if (currentValue.venue && normalizedVenues.includes(currentValue.venue)) {
           return currentValue;
         }
+
         return {
           ...currentValue,
           venue: normalizedVenues[0] || "",
@@ -312,6 +409,7 @@ const BookingsPage = () => {
         if (currentValue.venue && normalizedVenues.includes(currentValue.venue)) {
           return currentValue;
         }
+
         return {
           ...currentValue,
           venue: normalizedVenues[0] || "",
@@ -332,6 +430,7 @@ const BookingsPage = () => {
 
   useEffect(() => {
     const prefill = location.state?.targetActionPrefill;
+
     if (!prefill || typeof prefill !== "object") {
       return;
     }
@@ -351,7 +450,7 @@ const BookingsPage = () => {
         typeof prefill.numCourts === "string"
           ? prefill.numCourts
           : currentValue.numCourts,
-      recurringWeekly: Boolean(prefill.recurringWeekly),
+      recurringWeekly: false,
     }));
 
     const pipedSlots = Array.isArray(prefill.slotOptions) ? prefill.slotOptions : [];
@@ -363,9 +462,10 @@ const BookingsPage = () => {
         ? `Loaded ${pipedSlots.length} slot option(s) from availability.`
         : "Target action inputs prefilled from availability."
     );
+    setActiveTab(ACTIONS_TAB);
 
     window.requestAnimationFrame(() => {
-      targetActionsRef.current?.scrollIntoView({
+      targetsPanelRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
@@ -416,6 +516,7 @@ const BookingsPage = () => {
       setGlobalActionSuccess("Bookings refreshed.");
     } catch (requestError) {
       setBookingsError(requestError.message || "Failed to refresh bookings.");
+    } finally {
       setIsRefreshingBookings(false);
     }
   };
@@ -520,9 +621,7 @@ const BookingsPage = () => {
       await Promise.all([loadBookings(), loadBookingTargets()]);
       setGlobalActionSuccess("Booking targets run completed.");
     } catch (requestError) {
-      setGlobalActionError(
-        requestError.message || "Failed to run booking targets."
-      );
+      setGlobalActionError(requestError.message || "Failed to run booking targets.");
     } finally {
       setIsRunningBookTargets(false);
     }
@@ -569,7 +668,10 @@ const BookingsPage = () => {
     setTargetActionSuccess("");
     clearGlobalFeedback();
 
-    const { payload, error } = buildBookingTargetPayload(targetActionValues);
+    const { payload, error } = buildBookingTargetPayload({
+      ...targetActionValues,
+      recurringWeekly: false,
+    });
 
     if (error) {
       setTargetActionError(error);
@@ -599,7 +701,10 @@ const BookingsPage = () => {
     setTargetActionError("");
     setTargetActionSuccess("");
 
-    const { payload, error } = buildBookingTargetPayload(targetActionValues);
+    const { payload, error } = buildBookingTargetPayload({
+      ...targetActionValues,
+      recurringWeekly: false,
+    });
 
     if (error) {
       setTargetActionError(error);
@@ -624,523 +729,520 @@ const BookingsPage = () => {
     }
   };
 
+  const renderVenueField = (idPrefix, value, onChange) => (
+    <div className="bookings-field bookings-field-venue">
+      <label htmlFor={`${idPrefix}-venue`}>Venue</label>
+      {venues.length > 0 ? (
+        <select
+          id={`${idPrefix}-venue`}
+          className="bookings-select"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={isLoadingVenues}
+          required
+        >
+          {venues.map((venue) => (
+            <option key={venue} value={venue}>
+              {venue}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          id={`${idPrefix}-venue`}
+          className="bookings-input bookings-mono"
+          type="text"
+          value={value}
+          placeholder={isLoadingVenues ? "Loading venues..." : "Enter venue (slug)"}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={isLoadingVenues}
+          required
+        />
+      )}
+    </div>
+  );
+
+  const renderTargetFields = (idPrefix, values, onChange) => (
+    <>
+      <div className="bookings-form-row bookings-form-row-three">
+        {renderVenueField(idPrefix, values.venue, (nextValue) =>
+          onChange("venue", nextValue)
+        )}
+        <div className="bookings-field">
+          <label htmlFor={`${idPrefix}-date`}>Date</label>
+          <input
+            id={`${idPrefix}-date`}
+            className="bookings-input bookings-mono"
+            type="date"
+            value={values.date}
+            onChange={(event) => onChange("date", event.target.value)}
+            required
+          />
+        </div>
+        <div className="bookings-field bookings-field-number">
+          <label htmlFor={`${idPrefix}-courts`}>Courts</label>
+          <input
+            id={`${idPrefix}-courts`}
+            className="bookings-input bookings-mono"
+            type="number"
+            min={1}
+            step={1}
+            value={values.numCourts}
+            onChange={(event) => onChange("numCourts", event.target.value)}
+            required
+          />
+        </div>
+      </div>
+      <div className="bookings-form-row bookings-form-row-two">
+        <div className="bookings-field bookings-field-time">
+          <label htmlFor={`${idPrefix}-start`}>Start time</label>
+          <input
+            id={`${idPrefix}-start`}
+            className="bookings-input bookings-mono"
+            type="time"
+            step={1800}
+            value={values.startTime}
+            onChange={(event) => onChange("startTime", event.target.value)}
+            required
+          />
+        </div>
+        <div className="bookings-field bookings-field-time">
+          <label htmlFor={`${idPrefix}-end`}>End time</label>
+          <input
+            id={`${idPrefix}-end`}
+            className="bookings-input bookings-mono"
+            type="time"
+            step={1800}
+            value={values.endTime}
+            onChange={(event) => onChange("endTime", event.target.value)}
+            required
+          />
+        </div>
+      </div>
+    </>
+  );
+
   return (
-    <Container className="page-container">
-      <div className="page-heading">
+    <Container fluid="lg" className="page-container bookings-page">
+      <section className="bookings-page-head">
         <div>
           <h1>Bookings</h1>
-          <p className="page-subtitle">
-            Manage bookings and booking targets from one place, including manual
-            target actions and booking utilities.
+          <p className="bookings-page-subtitle">
+            Manage live bookings, scheduled targets, and manual booking actions.
+          </p>
+          <p className="bookings-page-meta">
+            Last updated{" "}
+            <strong>{lastUpdatedTime ? fdatetime(lastUpdatedTime) : "Unknown"}</strong>
+            <span aria-hidden="true"> - </span>
+            {totalBookings} active booking{totalBookings === 1 ? "" : "s"}
+            <span aria-hidden="true"> - </span>
+            {sortedTargets.length} scheduled target
+            {sortedTargets.length === 1 ? "" : "s"}
           </p>
         </div>
-        <div className="d-flex flex-wrap gap-2">
-          <Button
+        <div className="bookings-page-actions">
+          <button
+            type="button"
+            className="bookings-btn"
             onClick={handleRefreshBookings}
             disabled={isRefreshingBookings || !hasAdminAccess}
           >
             {isRefreshingBookings ? "Refreshing..." : "Refresh bookings"}
-          </Button>
-          <Button
-            variant="outline-dark"
+          </button>
+          <button
+            type="button"
+            className="bookings-btn"
             onClick={handleRunBookingTargets}
             disabled={isRunningBookTargets || !hasAdminAccess}
           >
             {isRunningBookTargets ? "Running..." : "Run booking targets"}
-          </Button>
-          <Button
-            variant="outline-secondary"
+          </button>
+          <button
+            type="button"
+            className="bookings-btn"
             onClick={handleCleanTargets}
             disabled={isCleaningTargets || !hasAdminAccess}
           >
             {isCleaningTargets ? "Cleaning..." : "Clean stale targets"}
-          </Button>
+          </button>
         </div>
-      </div>
-
-      {lastUpdatedTime ? (
-        <p className="page-subtitle compact-subtitle">
-          Last updated {fdatetime(lastUpdatedTime)}
-        </p>
-      ) : null}
+      </section>
 
       {!hasAdminAccess ? (
-        <Alert variant="warning">
+        <Alert variant="warning" className="bookings-alert">
           Admin token is required for write actions. Finding bookable slots is
           available without a token.
         </Alert>
       ) : null}
 
-      {globalActionError ? <Alert variant="danger">{globalActionError}</Alert> : null}
+      {globalActionError ? (
+        <Alert variant="danger" className="bookings-alert">
+          {globalActionError}
+        </Alert>
+      ) : null}
       {globalActionSuccess ? (
-        <Alert variant="success">{globalActionSuccess}</Alert>
+        <Alert variant="success" className="bookings-alert">
+          {globalActionSuccess}
+        </Alert>
       ) : null}
 
-      <div ref={targetActionsRef}>
-        <Card className="surface-card mb-4">
-          <Card.Body>
-          <Card.Title>Bookings Cache</Card.Title>
-          {bookingsError ? <Alert variant="danger">{bookingsError}</Alert> : null}
-          {isLoadingBookings ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" />
-            </div>
-          ) : null}
-          {!isLoadingBookings && Object.keys(bookings).length === 0 ? (
-            <Alert variant="secondary">No cached bookings are available yet.</Alert>
-          ) : null}
-          {!isLoadingBookings
-            ? Object.entries(bookings).map(([date, dateBookings]) => (
-                <div key={date}>
-                  <h4>{fdate(date)}</h4>
-                  {dateBookings.map((booking, index) => (
-                    <Card className="mb-3" key={`${date}-${booking.SessionID}-${index}`}>
-                      <Card.Body>
-                        <Card.Title>
-                          {booking.Venue} - Court {booking.CourtNumber}
-                        </Card.Title>
-                        <ListGroup>
-                          <ListGroup.Item>
-                            Time: {minutesToTime(booking.StartTime)} -{" "}
-                            {minutesToTime(booking.EndTime)}
-                          </ListGroup.Item>
-                          <ListGroup.Item>
-                            Booking cost - {formatPrice(booking.Cost)}
-                          </ListGroup.Item>
-                          <ListGroup.Item>
-                            Cancel deadline
-                            <br />
-                            {fdatetime(booking.CancelDeadline)}
-                            <Button
-                              style={{ float: "right" }}
-                              variant="danger"
-                              disabled={!hasAdminAccess}
+      <div className="bookings-grid">
+        <section className="bookings-card">
+          <div className="bookings-card-head">
+            <h2>Bookings cache</h2>
+            <span className="bookings-count">{totalBookings}</span>
+            <span className="bookings-card-head-note">Grouped by date</span>
+          </div>
+          <div className="bookings-card-body">
+            {bookingsError ? <Alert variant="danger">{bookingsError}</Alert> : null}
+            {isLoadingBookings ? (
+              <div className="bookings-loading">
+                <Spinner animation="border" size="sm" />
+                <span>Loading bookings...</span>
+              </div>
+            ) : null}
+
+            {!isLoadingBookings && Object.keys(bookings).length === 0 ? (
+              <div className="bookings-empty">No cached bookings are available yet.</div>
+            ) : null}
+
+            {!isLoadingBookings
+              ? Object.entries(bookings).map(([date, dateBookings]) => {
+                  const dayHeading = getDayHeading(date);
+                  const relativeLabel = getRelativeDayLabel(date);
+
+                  return (
+                    <section className="bookings-day-group" key={date}>
+                      <div className="bookings-day-head">
+                        <span className="bookings-day-weekday">{dayHeading.weekday}</span>
+                        <span className="bookings-day-date">{dayHeading.dateLabel}</span>
+                        {relativeLabel ? (
+                          <span className="bookings-day-relative">{relativeLabel}</span>
+                        ) : null}
+                      </div>
+
+                      {dateBookings.map((booking, index) => (
+                        <article
+                          className="booking-row"
+                          key={`${date}-${booking.SessionID}-${index}`}
+                        >
+                          <div className="booking-row-time bookings-mono">
+                            <strong>{minutesToTime(booking.StartTime)}</strong>
+                            <span>{`-> ${minutesToTime(booking.EndTime)}`}</span>
+                          </div>
+                          <div className="booking-row-main">
+                            <p className="booking-row-title">
+                              {booking.Venue}
+                              {booking.CourtNumber ? (
+                                <span> Court {booking.CourtNumber}</span>
+                              ) : null}
+                            </p>
+                            <div className="booking-row-meta">
+                              <span>{formatPrice(booking.Cost)} booking cost</span>
+                              <span className="booking-row-cancel-deadline">
+                                Cancel by {fdatetime(booking.CancelDeadline)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="booking-row-actions">
+                            <button
+                              type="button"
+                              className="bookings-btn bookings-btn-danger"
                               onClick={() => handleCancelBooking(booking)}
+                              disabled={!hasAdminAccess}
                             >
                               Cancel
-                            </Button>
-                          </ListGroup.Item>
-                        </ListGroup>
-                      </Card.Body>
-                    </Card>
-                  ))}
-                </div>
-              ))
-            : null}
-        </Card.Body>
-      </Card>
-
-      <Card className="surface-card mb-4">
-        <Card.Body>
-          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-            <Card.Title className="mb-0">Targets</Card.Title>
-            <Button
-              variant="outline-secondary"
-              onClick={() => loadBookingTargets()}
-              disabled={isLoadingTargets || isRefreshingTargets}
-            >
-              {isRefreshingTargets ? "Refreshing..." : "Refresh targets"}
-            </Button>
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </section>
+                  );
+                })
+              : null}
+          </div>
+        </section>
+        <section className="bookings-card" ref={targetsPanelRef}>
+          <div className="bookings-card-head">
+            <h2>{activeTab === TARGET_TAB ? "Targets" : "Manual run"}</h2>
+            {activeTab === TARGET_TAB ? (
+              <span className="bookings-count">{sortedTargets.length}</span>
+            ) : null}
+            <div className="bookings-tab-strip">
+              <button
+                type="button"
+                className={activeTab === TARGET_TAB ? "active" : ""}
+                onClick={() => setActiveTab(TARGET_TAB)}
+              >
+                Scheduled
+              </button>
+              <button
+                type="button"
+                className={activeTab === ACTIONS_TAB ? "active" : ""}
+                onClick={() => setActiveTab(ACTIONS_TAB)}
+              >
+                Manual run
+              </button>
+            </div>
           </div>
 
-          {targetsError ? <Alert variant="danger">{targetsError}</Alert> : null}
-          {venuesError ? <Alert variant="warning">{venuesError}</Alert> : null}
-          {targetCrudError ? <Alert variant="danger">{targetCrudError}</Alert> : null}
-          {targetCrudSuccess ? (
-            <Alert variant="success">{targetCrudSuccess}</Alert>
-          ) : null}
+          <div className="bookings-card-body">
+            {targetsError ? <Alert variant="danger">{targetsError}</Alert> : null}
+            {venuesError ? <Alert variant="warning">{venuesError}</Alert> : null}
 
-          <Form onSubmit={handleAddTarget}>
-            <Row className="g-3">
-              <Col md={4}>
-                <Form.Group controlId="target-crud-venue-input">
-                  <Form.Label>Venue</Form.Label>
-                  {venues.length > 0 ? (
-                    <Form.Select
-                      value={targetFormValues.venue}
-                      onChange={(event) =>
-                        handleTargetFormChange("venue", event.target.value)
-                      }
-                      disabled={isLoadingVenues}
-                      required
-                    >
-                      {venues.map((venue) => (
-                        <option key={venue} value={venue}>
-                          {venue}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  ) : (
-                    <Form.Control
-                      type="text"
-                      value={targetFormValues.venue}
-                      placeholder={
-                        isLoadingVenues ? "Loading venues..." : "Enter venue (slug)"
-                      }
-                      onChange={(event) =>
-                        handleTargetFormChange("venue", event.target.value)
-                      }
-                      disabled={isLoadingVenues}
-                      required
-                    />
+            {activeTab === TARGET_TAB ? (
+              <>
+                {targetCrudError ? <Alert variant="danger">{targetCrudError}</Alert> : null}
+                {targetCrudSuccess ? (
+                  <Alert variant="success">{targetCrudSuccess}</Alert>
+                ) : null}
+
+                <form onSubmit={handleAddTarget} className="bookings-form">
+                  {renderTargetFields(
+                    "target-crud",
+                    targetFormValues,
+                    handleTargetFormChange
                   )}
-                </Form.Group>
-              </Col>
-              <Col md={2}>
-                <Form.Group controlId="target-crud-date-input">
-                  <Form.Label>Date</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={targetFormValues.date}
-                    onChange={(event) =>
-                      handleTargetFormChange("date", event.target.value)
-                    }
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={2}>
-                <Form.Group controlId="target-crud-start-input">
-                  <Form.Label>Start time</Form.Label>
-                  <Form.Control
-                    type="time"
-                    step={1800}
-                    value={targetFormValues.startTime}
-                    onChange={(event) =>
-                      handleTargetFormChange("startTime", event.target.value)
-                    }
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={2}>
-                <Form.Group controlId="target-crud-end-input">
-                  <Form.Label>End time</Form.Label>
-                  <Form.Control
-                    type="time"
-                    step={1800}
-                    value={targetFormValues.endTime}
-                    onChange={(event) =>
-                      handleTargetFormChange("endTime", event.target.value)
-                    }
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={2}>
-                <Form.Group controlId="target-crud-courts-input">
-                  <Form.Label>Courts</Form.Label>
-                  <Form.Control
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={targetFormValues.numCourts}
-                    onChange={(event) =>
-                      handleTargetFormChange("numCourts", event.target.value)
-                    }
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group controlId="target-crud-recurring-input" className="pt-2">
-                  <Form.Check
-                    type="switch"
-                    label="Recurring weekly"
-                    checked={targetFormValues.recurringWeekly}
-                    onChange={(event) =>
-                      handleTargetFormChange("recurringWeekly", event.target.checked)
-                    }
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={8} className="d-flex flex-wrap justify-content-end gap-2">
-                <Button variant="outline-secondary" onClick={resetTargetForm}>
-                  Reset
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={!hasAdminAccess || isSavingTarget || isLoadingVenues}
-                >
-                  {isSavingTarget ? "Adding..." : "Add target"}
-                </Button>
-              </Col>
-            </Row>
-          </Form>
 
-          {isLoadingTargets ? (
-            <div className="text-center py-4">
-              <Spinner animation="border" />
-            </div>
-          ) : null}
+                  <div className="bookings-form-foot">
+                    <label className="bookings-switch">
+                      <input
+                        type="checkbox"
+                        checked={targetFormValues.recurringWeekly}
+                        onChange={(event) =>
+                          handleTargetFormChange(
+                            "recurringWeekly",
+                            event.target.checked
+                          )
+                        }
+                      />
+                      <span className="bookings-switch-track" />
+                      <span className="bookings-switch-label">Recurring weekly</span>
+                    </label>
+                    <span className="bookings-spacer" />
+                    <button
+                      type="button"
+                      className="bookings-btn bookings-btn-ghost"
+                      onClick={resetTargetForm}
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="submit"
+                      className="bookings-btn bookings-btn-primary"
+                      disabled={!hasAdminAccess || isSavingTarget || isLoadingVenues}
+                    >
+                      {isSavingTarget ? "Adding..." : "Add target"}
+                    </button>
+                  </div>
+                </form>
 
-          {!isLoadingTargets && sortedTargets.length === 0 ? (
-            <Alert variant="secondary" className="mt-3 mb-0">
-              No booking targets are scheduled yet.
-            </Alert>
-          ) : null}
+                <div className="bookings-list-head">
+                  <h3>Scheduled targets</h3>
+                  <button
+                    type="button"
+                    className="bookings-btn bookings-btn-ghost"
+                    onClick={() => loadBookingTargets()}
+                    disabled={isLoadingTargets || isRefreshingTargets}
+                  >
+                    {isRefreshingTargets ? "Refreshing..." : "Refresh"}
+                  </button>
+                </div>
 
-          {!isLoadingTargets ? (
-            <div className="mt-3">
-              {sortedTargets.map((target, index) => {
-                const targetKey = buildTargetKey(target);
+                {isLoadingTargets ? (
+                  <div className="bookings-loading">
+                    <Spinner animation="border" size="sm" />
+                    <span>Loading targets...</span>
+                  </div>
+                ) : null}
 
-                return (
-                  <Card key={`${targetKey}-${index}`} className="mb-3">
-                    <Card.Body>
-                      <div className="d-flex flex-wrap justify-content-between gap-2 mb-2">
-                        <Card.Title className="mb-0">
-                          {target.Venue} ({target.NumCourts || 1}{" "}
-                          {(target.NumCourts || 1) === 1 ? "Court" : "Courts"})
-                        </Card.Title>
-                        <div className="d-flex flex-wrap align-items-center gap-2">
-                          <Badge bg={target.RecurringWeekly ? "info" : "secondary"}>
-                            {target.RecurringWeekly ? "Recurring weekly" : "One-off"}
-                          </Badge>
-                          <Button
-                            size="sm"
-                            variant="outline-danger"
+                {!isLoadingTargets && sortedTargets.length === 0 ? (
+                  <div className="bookings-empty">
+                    No booking targets are scheduled yet.
+                  </div>
+                ) : null}
+
+                {!isLoadingTargets ? (
+                  <div className="target-list">
+                    {sortedTargets.map((target, index) => {
+                      const targetKey = buildTargetKey(target);
+                      const numCourts = Number(target.NumCourts || 1);
+
+                      return (
+                        <article
+                          className="target-row"
+                          key={`${targetKey}-${index}`}
+                        >
+                          <div>
+                            <div className="target-line">
+                              <strong>{target.Venue}</strong>
+                              <span
+                                className={
+                                  target.RecurringWeekly
+                                    ? "target-badge target-badge-recur"
+                                    : "target-badge"
+                                }
+                              >
+                                {target.RecurringWeekly
+                                  ? "Recurring weekly"
+                                  : "One-off"}
+                              </span>
+                            </div>
+                            <p className="target-meta bookings-mono">
+                              {target.Date} | {minutesToTime(target.StartTime)} -{" "}
+                              {minutesToTime(target.EndTime)} | {numCourts} court
+                              {numCourts === 1 ? "" : "s"}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="bookings-btn bookings-btn-danger-outline"
                             onClick={() => handleDeleteTarget(target)}
                             disabled={
                               !hasAdminAccess ||
                               isSavingTarget ||
                               deletingTargetKey === targetKey
                             }
+                            title="Delete target"
                           >
                             {deletingTargetKey === targetKey ? "Deleting..." : "Delete"}
-                          </Button>
-                        </div>
-                      </div>
-                      <ListGroup>
-                        <ListGroup.Item>{fdate(target.Date)}</ListGroup.Item>
-                        <ListGroup.Item>
-                          {minutesToTime(target.StartTime)} -{" "}
-                          {minutesToTime(target.EndTime)}
-                        </ListGroup.Item>
-                      </ListGroup>
-                    </Card.Body>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : null}
-        </Card.Body>
-      </Card>
+                          </button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
 
-      <Card className="surface-card mb-4">
-        <Card.Body>
-          <Card.Title>Target Actions</Card.Title>
-          <p className="page-subtitle compact-subtitle">
-            Use one target input to either find slots or run the target booking
-            endpoint immediately.
-          </p>
+            {activeTab === ACTIONS_TAB ? (
+              <>
+                {targetActionError ? (
+                  <Alert variant="danger">{targetActionError}</Alert>
+                ) : null}
+                {targetActionSuccess ? (
+                  <Alert variant="success">{targetActionSuccess}</Alert>
+                ) : null}
 
-          {targetActionError ? <Alert variant="danger">{targetActionError}</Alert> : null}
-          {targetActionSuccess ? (
-            <Alert variant="success">{targetActionSuccess}</Alert>
-          ) : null}
-
-          <Form>
-            <Row className="g-3">
-              <Col md={4}>
-                <Form.Group controlId="target-actions-venue-input">
-                  <Form.Label>Venue</Form.Label>
-                  {venues.length > 0 ? (
-                    <Form.Select
-                      value={targetActionValues.venue}
-                      onChange={(event) =>
-                        handleTargetActionFormChange("venue", event.target.value)
-                      }
-                      disabled={isLoadingVenues}
-                      required
-                    >
-                      {venues.map((venue) => (
-                        <option key={venue} value={venue}>
-                          {venue}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  ) : (
-                    <Form.Control
-                      type="text"
-                      value={targetActionValues.venue}
-                      placeholder={
-                        isLoadingVenues ? "Loading venues..." : "Enter venue (slug)"
-                      }
-                      onChange={(event) =>
-                        handleTargetActionFormChange("venue", event.target.value)
-                      }
-                      disabled={isLoadingVenues}
-                      required
-                    />
+                <form
+                  className="bookings-form"
+                  onSubmit={(event) => event.preventDefault()}
+                >
+                  {renderTargetFields(
+                    "target-actions",
+                    targetActionValues,
+                    handleTargetActionFormChange
                   )}
-                </Form.Group>
-              </Col>
-              <Col md={2}>
-                <Form.Group controlId="target-actions-date-input">
-                  <Form.Label>Date</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={targetActionValues.date}
-                    onChange={(event) =>
-                      handleTargetActionFormChange("date", event.target.value)
-                    }
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={2}>
-                <Form.Group controlId="target-actions-start-input">
-                  <Form.Label>Start time</Form.Label>
-                  <Form.Control
-                    type="time"
-                    step={1800}
-                    value={targetActionValues.startTime}
-                    onChange={(event) =>
-                      handleTargetActionFormChange("startTime", event.target.value)
-                    }
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={2}>
-                <Form.Group controlId="target-actions-end-input">
-                  <Form.Label>End time</Form.Label>
-                  <Form.Control
-                    type="time"
-                    step={1800}
-                    value={targetActionValues.endTime}
-                    onChange={(event) =>
-                      handleTargetActionFormChange("endTime", event.target.value)
-                    }
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={2}>
-                <Form.Group controlId="target-actions-courts-input">
-                  <Form.Label>Courts</Form.Label>
-                  <Form.Control
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={targetActionValues.numCourts}
-                    onChange={(event) =>
-                      handleTargetActionFormChange("numCourts", event.target.value)
-                    }
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group controlId="target-actions-recurring-input" className="pt-2">
-                  <Form.Check
-                    type="switch"
-                    label="Recurring weekly"
-                    checked={targetActionValues.recurringWeekly}
-                    onChange={(event) =>
-                      handleTargetActionFormChange(
-                        "recurringWeekly",
-                        event.target.checked
-                      )
-                    }
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group controlId="target-actions-dry-run-input" className="pt-2">
-                  <Form.Check
-                    type="switch"
-                    label="Dry run (for Book target now)"
-                    checked={dryRun}
-                    onChange={(event) => setDryRun(event.target.checked)}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4} className="d-flex flex-wrap justify-content-end gap-2">
-                <Button variant="outline-secondary" onClick={resetTargetActionForm}>
-                  Reset
-                </Button>
-                <Button
-                  variant="outline-primary"
-                  onClick={handleFindBookableSlots}
-                  disabled={isFindingSlots || isBookingTargetNow}
-                >
-                  {isFindingSlots ? "Finding..." : "Find bookable slots"}
-                </Button>
-                <Button
-                  onClick={handleBookTargetNow}
-                  disabled={!hasAdminAccess || isBookingTargetNow || isFindingSlots}
-                >
-                  {isBookingTargetNow ? "Running..." : "Book target now"}
-                </Button>
-              </Col>
-            </Row>
-          </Form>
 
-          {findResultRaw !== null ? (
-            <section className="mt-4">
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <strong>Find Results</strong>
-                <Badge bg="secondary">{findResultSlots.length} slots</Badge>
-              </div>
+                  <div className="bookings-form-foot bookings-form-foot-wrap">
+                    <label className="bookings-switch">
+                      <input
+                        type="checkbox"
+                        checked={dryRun}
+                        onChange={(event) => setDryRun(event.target.checked)}
+                      />
+                      <span className="bookings-switch-track" />
+                      <span className="bookings-switch-label">
+                        Dry run (for Book target now)
+                      </span>
+                    </label>
 
-              {findResultSlots.length === 0 ? (
-                <Alert variant="secondary" className="mb-3">
-                  No bookable slots matched the target.
-                </Alert>
-              ) : (
-                <div className="d-grid gap-2 mb-3">
-                  {findResultSlots.map((slot) => (
-                    <Card key={slot.id}>
-                      <Card.Body>
-                        <div className="d-flex justify-content-between flex-wrap gap-2">
-                          <div>
-                            <strong>{slot.venue}</strong>
-                            <div className="text-muted small">
-                              {slot.name}
-                              {slot.courtNumber !== null
-                                ? ` - Court ${slot.courtNumber}`
-                                : ""}
-                            </div>
-                            <div className="text-muted small">{fdate(slot.date)}</div>
-                          </div>
-                          <div className="text-end">
-                            <div>
-                              {minutesToTime(slot.startTime)} -{" "}
-                              {minutesToTime(slot.endTime)}
-                            </div>
-                            <div className="text-muted small">
-                              {slot.cost === null ? "Price unavailable" : formatPrice(slot.cost)}
-                            </div>
-                          </div>
-                        </div>
-                        {slot.bookingLink ? (
-                          <a
-                            href={slot.bookingLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="small"
-                          >
-                            Open booking page
-                          </a>
-                        ) : null}
-                      </Card.Body>
-                    </Card>
-                  ))}
-                </div>
-              )}
+                    <span className="bookings-spacer" />
+                    <button
+                      type="button"
+                      className="bookings-btn bookings-btn-ghost"
+                      onClick={resetTargetActionForm}
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      className="bookings-btn"
+                      onClick={handleFindBookableSlots}
+                      disabled={isFindingSlots || isBookingTargetNow}
+                    >
+                      {isFindingSlots ? "Finding..." : "Find bookable slots"}
+                    </button>
+                    <button
+                      type="button"
+                      className="bookings-btn bookings-btn-primary"
+                      onClick={handleBookTargetNow}
+                      disabled={!hasAdminAccess || isBookingTargetNow || isFindingSlots}
+                    >
+                      {isBookingTargetNow ? "Running..." : "Book target now"}
+                    </button>
+                  </div>
+                </form>
 
-              <div className="response-panel">
-                <div className="response-panel-header">
-                  <span className="endpoint-section-label mb-0">Raw response</span>
-                </div>
-                <pre>{JSON.stringify(findResultRaw, null, 2)}</pre>
-              </div>
-            </section>
-          ) : null}
-          </Card.Body>
-        </Card>
+                {findResultRaw !== null ? (
+                  <section className="bookings-find-results">
+                    <div className="bookings-list-head">
+                      <h3>Find results</h3>
+                      <p>
+                        {findResultSlots.length} slot
+                        {findResultSlots.length === 1 ? "" : "s"}
+                        {findResultSlots.length > 0
+                          ? ` | ${matchedSlotsCount} match selected window`
+                          : ""}
+                      </p>
+                    </div>
+
+                    {findResultSlots.length === 0 ? (
+                      <div className="bookings-empty">
+                        No bookable slots matched the target.
+                      </div>
+                    ) : (
+                      <div className="slot-grid">
+                        {findResultSlots.map((slot) => {
+                          const isWindowMatch =
+                            slot.startTime ===
+                              timeToMinutes(targetActionValues.startTime) &&
+                            slot.endTime === timeToMinutes(targetActionValues.endTime);
+
+                          return (
+                            <article
+                              key={slot.id}
+                              className={`slot-card${isWindowMatch ? " slot-card-match" : ""}`}
+                            >
+                              <p className="slot-court">
+                                {slot.courtNumber !== null
+                                  ? `Court ${slot.courtNumber}`
+                                  : "Court"}
+                                {isWindowMatch ? " | match" : ""}
+                              </p>
+                              <p className="slot-time bookings-mono">
+                                {minutesToTime(slot.startTime)} - {minutesToTime(slot.endTime)}
+                              </p>
+                              <p className="slot-meta">
+                                {slot.date || "Unknown date"} |{" "}
+                                {slot.cost === null ? "Price unavailable" : formatPrice(slot.cost)}
+                              </p>
+                              {slot.bookingLink ? (
+                                <a
+                                  className="slot-link"
+                                  href={slot.bookingLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Open booking page
+                                </a>
+                              ) : null}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <details className="bookings-raw-response">
+                      <summary>Raw response</summary>
+                      <pre>{JSON.stringify(findResultRaw, null, 2)}</pre>
+                    </details>
+                  </section>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </section>
       </div>
     </Container>
   );
