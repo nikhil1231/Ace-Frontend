@@ -11,7 +11,7 @@ const LOCAL_BACKEND_URL =
 const HOSTED_BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL_HOSTED ||
   process.env.REACT_APP_BACKEND_URL ||
-  "https://ace-tennis-9353ae97c95f.herokuapp.com";
+  "https://ace.188.166.157.241.nip.io";
 
 const normalizeUrl = (url) => String(url || "").trim().replace(/\/+$/, "");
 

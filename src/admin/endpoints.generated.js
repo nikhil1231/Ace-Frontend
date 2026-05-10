@@ -685,6 +685,17 @@ export const GENERATED_ENDPOINTS = [
     }
   },
   {
+    "id": "health-get",
+    "method": "GET",
+    "path": "/health",
+    "section": "overview",
+    "title": "Healthcheck",
+    "description": "Healthcheck",
+    "confirm": false,
+    "fields": [],
+    "initialValues": {}
+  },
+  {
     "id": "schedule-get",
     "method": "GET",
     "path": "/schedule",
