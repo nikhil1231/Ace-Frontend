@@ -11,6 +11,7 @@ import SchedulePage from "./pages/SchedulePage";
 import SettingsPage from "./pages/SettingsPage";
 import VenuePage from "./pages/VenuePage";
 import AdminPage from "./pages/admin/AdminPage";
+import AdminLogsPage from "./pages/admin/AdminLogsPage";
 import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
 import AdminSectionPage from "./pages/admin/AdminSectionPage";
 
@@ -58,6 +59,7 @@ const AppShell = () => {
                 path="bookings"
                 element={<AdminSectionPage sectionKey="bookings" />}
               />
+              <Route path="logs" element={<AdminLogsPage />} />
             </Route>
           </Route>
           <Route path="*" element={<NotFoundPage />} />

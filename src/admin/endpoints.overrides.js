@@ -15,6 +15,9 @@ export const AUTH_REQUIRED_OPERATIONS = new Set([
   op("PUT", "/booking/targets"),
   op("DELETE", "/booking/targets"),
   op("POST", "/booking/targets/clean"),
+  op("GET", "/logs/sources"),
+  op("GET", "/logs/tail"),
+  op("GET", "/logs/follow"),
 ]);
 
 const BOOKING_TARGET_FIELD_OVERRIDES = {

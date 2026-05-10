@@ -43,6 +43,11 @@ const AdminPage = () => {
             Bookings
           </Nav.Link>
         </Nav.Item>
+        <Nav.Item>
+          <Nav.Link as={NavLink} to="/admin/logs">
+            Logs
+          </Nav.Link>
+        </Nav.Item>
       </Nav>
 
       <div className="admin-content">

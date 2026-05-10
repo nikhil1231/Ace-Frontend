@@ -270,6 +270,155 @@
   text-decoration: underline;
 }
 
+.logs-status-badges,
+.logs-viewer-meta,
+.logs-autoscroll-control,
+.logs-actions .btn,
+.logs-loading {
+  align-items: center;
+  display: flex;
+}
+
+.logs-status-badges,
+.logs-viewer-meta {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.logs-alert,
+.logs-toolbar-card {
+  margin-bottom: 1rem;
+}
+
+.logs-toolbar-card .form-label {
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+}
+
+.logs-actions {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.logs-actions .btn {
+  border-radius: 0.5rem !important;
+  gap: 0.4rem;
+  justify-content: center;
+  min-height: 2.4rem;
+}
+
+.logs-autoscroll-control {
+  gap: 0.75rem;
+  justify-content: flex-end;
+  min-height: 2.4rem;
+}
+
+.logs-autoscroll-control .form-check {
+  margin-bottom: 0;
+}
+
+.logs-autoscroll-control .btn {
+  align-items: center;
+  border-radius: 0.5rem;
+  display: inline-flex;
+  height: 2.25rem;
+  justify-content: center;
+  width: 2.25rem;
+}
+
+.logs-viewer-card {
+  overflow: hidden;
+}
+
+.logs-viewer-header {
+  align-items: center;
+  background: #f8fafc;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.logs-viewer-header div:first-child {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.logs-viewer-header span,
+.logs-viewer-meta {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.logs-loading {
+  gap: 0.4rem;
+}
+
+.logs-viewer-body {
+  background: #0b1220;
+  padding: 0;
+}
+
+.logs-terminal {
+  color: #dbeafe;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  max-height: 34rem;
+  min-height: 24rem;
+  overflow: auto;
+  padding: 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.logs-line {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  min-height: 1.3rem;
+}
+
+.logs-line-system,
+.logs-empty-line {
+  color: #facc15;
+}
+
+.logs-empty-line {
+  padding: 0.25rem 0;
+}
+
+@media (max-width: 767.98px) {
+  .logs-status-badges,
+  .logs-autoscroll-control,
+  .logs-viewer-header,
+  .logs-viewer-meta {
+    justify-content: flex-start;
+  }
+
+  .logs-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .logs-actions .btn {
+    min-width: 0;
+  }
+
+  .logs-viewer-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .logs-terminal {
+    max-height: 28rem;
+    min-height: 20rem;
+  }
+}
+
 .schedule-controls-card {
   margin-top: 0.5rem;
 }

@@ -27,6 +27,11 @@ export const ADMIN_SECTIONS = [
     label: "Bookings",
     description: "Review bookings, manage targets, and trigger booking actions.",
   },
+  {
+    key: "logs",
+    label: "Logs",
+    description: "Tail and follow protected host logs.",
+  },
 ];
 
 const SECTION_ORDER = ADMIN_SECTIONS.map((section) => section.key);
@@ -44,6 +49,10 @@ const inferSection = (path) => {
 
   if (path.startsWith("/booking")) {
     return "bookings";
+  }
+
+  if (path.startsWith("/logs")) {
+    return "logs";
   }
 
   return "overview";

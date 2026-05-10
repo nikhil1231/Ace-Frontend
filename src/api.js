@@ -319,3 +319,91 @@ export const cancelBooking = async (venue, sessionId, username) =>
     },
     requiresAuth: true,
   });
+
+export const getLogSources = async ({ environment } = {}) =>
+  requestJson({
+    path: "/logs/sources",
+    requiresAuth: true,
+    environment,
+  });
+
+export const getLogTail = async ({ source, lines, environment } = {}) =>
+  requestJson({
+    path: "/logs/tail",
+    query: {
+      source,
+      lines,
+    },
+    requiresAuth: true,
+    environment,
+  });
+
+export const streamLogFollow = async ({
+  source,
+  lines,
+  environment,
+  signal,
+  onEvent,
+}) => {
+  const url = buildApiUrl(
+    "/logs/follow",
+    {
+      source,
+      lines,
+    },
+    environment
+  );
+  const headers = new Headers({
+    Accept: "application/x-ndjson",
+  });
+  const token = getToken(environment);
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(url, {
+    headers,
+    signal,
+  });
+
+  if (!response.ok) {
+    const payload = await parseResponsePayload(response);
+    throw new Error(
+      extractErrorMessage(payload, response.statusText || "Request failed")
+    );
+  }
+
+  if (!response.body) {
+    throw new Error("Streaming responses are not supported by this browser.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    lines.forEach((line) => {
+      if (!line.trim()) {
+        return;
+      }
+
+      onEvent(JSON.parse(line));
+    });
+  }
+
+  const remaining = `${buffer}${decoder.decode()}`.trim();
+  if (remaining) {
+    onEvent(JSON.parse(remaining));
+  }
+};

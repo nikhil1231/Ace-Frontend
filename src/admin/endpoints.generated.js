@@ -696,6 +696,105 @@ export const GENERATED_ENDPOINTS = [
     "initialValues": {}
   },
   {
+    "id": "logs-follow-get",
+    "method": "GET",
+    "path": "/logs/follow",
+    "section": "overview",
+    "title": "Follow Logs",
+    "description": "Follow Logs",
+    "confirm": false,
+    "fields": [
+      {
+        "path": "query.lines",
+        "requestLocation": "query",
+        "requestPath": "lines",
+        "label": "Lines",
+        "type": "number",
+        "dataType": "integer",
+        "format": null,
+        "enum": null,
+        "required": false,
+        "defaultValue": 200,
+        "colMd": 6,
+        "step": 1
+      },
+      {
+        "path": "query.source",
+        "requestLocation": "query",
+        "requestPath": "source",
+        "label": "Source",
+        "type": "text",
+        "dataType": "string",
+        "format": null,
+        "enum": null,
+        "required": true,
+        "defaultValue": "",
+        "colMd": 6
+      }
+    ],
+    "initialValues": {
+      "query": {
+        "lines": 200,
+        "source": ""
+      }
+    }
+  },
+  {
+    "id": "logs-sources-get",
+    "method": "GET",
+    "path": "/logs/sources",
+    "section": "overview",
+    "title": "Get Log Sources",
+    "description": "Get Log Sources",
+    "confirm": false,
+    "fields": [],
+    "initialValues": {}
+  },
+  {
+    "id": "logs-tail-get",
+    "method": "GET",
+    "path": "/logs/tail",
+    "section": "overview",
+    "title": "Get Log Tail",
+    "description": "Get Log Tail",
+    "confirm": false,
+    "fields": [
+      {
+        "path": "query.lines",
+        "requestLocation": "query",
+        "requestPath": "lines",
+        "label": "Lines",
+        "type": "number",
+        "dataType": "integer",
+        "format": null,
+        "enum": null,
+        "required": false,
+        "defaultValue": 200,
+        "colMd": 6,
+        "step": 1
+      },
+      {
+        "path": "query.source",
+        "requestLocation": "query",
+        "requestPath": "source",
+        "label": "Source",
+        "type": "text",
+        "dataType": "string",
+        "format": null,
+        "enum": null,
+        "required": true,
+        "defaultValue": "",
+        "colMd": 6
+      }
+    ],
+    "initialValues": {
+      "query": {
+        "lines": 200,
+        "source": ""
+      }
+    }
+  },
+  {
     "id": "schedule-get",
     "method": "GET",
     "path": "/schedule",
