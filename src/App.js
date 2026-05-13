@@ -6,6 +6,7 @@ import Navibar from "./components/NaviBar";
 import { AppSettingsProvider, useAppSettings } from "./context/AppSettingsContext";
 import BookingsPage from "./pages/BookingsPage";
 import MapPage from "./pages/MapPage";
+import MonitorPage from "./pages/MonitorPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import SchedulePage from "./pages/SchedulePage";
 import SettingsPage from "./pages/SettingsPage";
@@ -43,6 +44,7 @@ const AppShell = () => {
           <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/venue" element={<VenuePage />} />
           <Route path="/map" element={<MapPage />} />
+          <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route element={<RequireAdminAccess />}>
             <Route path="/admin" element={<AdminPage />}>

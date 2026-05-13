@@ -204,6 +204,12 @@ export const cleanBookingTargets = async () =>
     requiresAuth: true,
   });
 
+export const getMonitorStatus = async () =>
+  requestJson({
+    path: "/monitor/status",
+    requiresAuth: true,
+  });
+
 export const getVenues = async () => requestJson({ path: "/venues" });
 
 export const getVenueName = async (venue) =>

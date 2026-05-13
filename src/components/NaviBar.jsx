@@ -33,6 +33,9 @@ const Navibar = () => {
             <Nav.Link as={NavLink} to="/map">
               Map
             </Nav.Link>
+            <Nav.Link as={NavLink} to="/monitor">
+              Monitor
+            </Nav.Link>
             {hasAdminAccess ? (
               <Nav.Link as={NavLink} to="/admin" end>
                 Admin

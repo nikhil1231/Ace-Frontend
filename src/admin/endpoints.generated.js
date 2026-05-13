@@ -806,6 +806,17 @@ export const GENERATED_ENDPOINTS = [
     }
   },
   {
+    "id": "monitor-status-get",
+    "method": "GET",
+    "path": "/monitor/status",
+    "section": "overview",
+    "title": "Get Monitor Status",
+    "description": "Get Monitor Status",
+    "confirm": false,
+    "fields": [],
+    "initialValues": {}
+  },
+  {
     "id": "schedule-get",
     "method": "GET",
     "path": "/schedule",

@@ -616,10 +616,11 @@ const BookingsPage = () => {
 
     try {
       setIsRunningBookTargets(true);
-      await bookTargets();
-      await new Promise((resolve) => window.setTimeout(resolve, 1500));
-      await Promise.all([loadBookings(), loadBookingTargets()]);
-      setGlobalActionSuccess("Booking targets run completed.");
+      const response = await bookTargets();
+      const runIds = Array.isArray(response?.runIds) ? response.runIds : [];
+      navigate(
+        runIds.length === 1 ? `/monitor?runId=${encodeURIComponent(runIds[0])}` : "/monitor"
+      );
     } catch (requestError) {
       setGlobalActionError(requestError.message || "Failed to run booking targets.");
     } finally {
@@ -680,13 +681,11 @@ const BookingsPage = () => {
 
     try {
       setIsBookingTargetNow(true);
-      await bookTargetNow(payload, { dryRun });
-      await new Promise((resolve) => window.setTimeout(resolve, 1500));
-      await Promise.all([loadBookings(), loadBookingTargets()]);
-      setTargetActionSuccess(
-        dryRun
-          ? "Dry-run booking executed for the target."
-          : "Live booking attempted for the target."
+      const response = await bookTargetNow(payload, { dryRun });
+      navigate(
+        response?.runId
+          ? `/monitor?runId=${encodeURIComponent(response.runId)}`
+          : "/monitor"
       );
     } catch (requestError) {
       setTargetActionError(
