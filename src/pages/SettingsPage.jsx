@@ -12,6 +12,7 @@ import {
 } from "react-bootstrap";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { checkAdminAuth } from "../api";
 import { useAppSettings } from "../context/AppSettingsContext";
 
 const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "");
@@ -60,12 +61,20 @@ const SettingsPage = () => {
     local: null,
     hosted: null,
   });
+  const [tokenCheck, setTokenCheck] = useState({
+    status: "idle",
+    message: "",
+  });
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     setDraftToken(token);
+    setTokenCheck({
+      status: token ? "idle" : "empty",
+      message: token ? "" : "No token stored for this environment.",
+    });
   }, [selectedEnvironment, token]);
 
   useEffect(() => {
@@ -74,8 +83,37 @@ const SettingsPage = () => {
 
   const redirectedFrom = location.state?.redirectTo;
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const tokenValue = draftToken.trim();
     setToken(draftToken);
+
+    if (!tokenValue) {
+      setTokenCheck({
+        status: "empty",
+        message: "No token stored for this environment.",
+      });
+      return;
+    }
+
+    setTokenCheck({
+      status: "checking",
+      message: "Checking token against the selected backend...",
+    });
+
+    try {
+      await checkAdminAuth({ environment: selectedEnvironment });
+      setTokenCheck({
+        status: "valid",
+        message: "Token accepted by the selected backend.",
+      });
+    } catch (error) {
+      setTokenCheck({
+        status: "invalid",
+        message:
+          error.message ||
+          "The selected backend rejected this token. Check the environment and token value.",
+      });
+    }
   };
 
   const handleSaveBackendUrls = () => {
@@ -115,7 +153,27 @@ const SettingsPage = () => {
   const handleClear = () => {
     setDraftToken("");
     clearToken();
+    setTokenCheck({
+      status: "empty",
+      message: "No token stored for this environment.",
+    });
   };
+
+  const tokenCheckBadge = {
+    checking: "warning",
+    valid: "success",
+    invalid: "danger",
+    empty: "secondary",
+    idle: "secondary",
+  }[tokenCheck.status];
+
+  const tokenCheckLabel = {
+    checking: "Checking",
+    valid: "Valid",
+    invalid: "Invalid",
+    empty: "No token",
+    idle: "Unchecked",
+  }[tokenCheck.status];
 
   return (
     <Container className="page-container">
@@ -240,14 +298,34 @@ const SettingsPage = () => {
                     placeholder="Paste the backend master token"
                   />
                   <Form.Text muted>
-                    ACE does not expose a safe validation endpoint, so the Admin
-                    tab unlocks when a token is stored. Protected requests will
-                    still be checked by the server.
+                    Token checks run against the selected backend and
+                    environment.
                   </Form.Text>
+                  {tokenCheck.message ? (
+                    <Alert
+                      variant={
+                        tokenCheck.status === "valid"
+                          ? "success"
+                          : tokenCheck.status === "invalid"
+                          ? "danger"
+                          : "secondary"
+                      }
+                      className="mt-3 mb-0"
+                    >
+                      {tokenCheck.message}
+                    </Alert>
+                  ) : null}
                 </Form.Group>
 
                 <div className="d-flex flex-wrap gap-2">
-                  <Button onClick={handleSave}>Save token</Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={tokenCheck.status === "checking"}
+                  >
+                    {tokenCheck.status === "checking"
+                      ? "Checking token..."
+                      : "Save and check token"}
+                  </Button>
                   <Button variant="outline-secondary" onClick={handleClear}>
                     Clear token
                   </Button>
@@ -286,6 +364,10 @@ const SettingsPage = () => {
                 <div className="settings-status-item">
                   <span>Token stored</span>
                   <strong>{token ? "Yes" : "No"}</strong>
+                </div>
+                <div className="settings-status-item">
+                  <span>Token check</span>
+                  <Badge bg={tokenCheckBadge}>{tokenCheckLabel}</Badge>
                 </div>
                 <div className="settings-status-item">
                   <span>Admin access</span>

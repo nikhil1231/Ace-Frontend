@@ -1,6 +1,7 @@
 const op = (method, path) => `${method.toUpperCase()} ${path}`;
 
 export const AUTH_REQUIRED_OPERATIONS = new Set([
+  op("GET", "/admin/auth/check"),
   op("PUT", "/venues"),
   op("DELETE", "/venues"),
   op("PUT", "/venues/address"),
@@ -48,6 +49,11 @@ const BOOKING_TARGET_FIELD_OVERRIDES = {
 };
 
 export const ENDPOINT_OVERRIDES = {
+  [op("GET", "/admin/auth/check")]: {
+    title: "Check admin token",
+    description: "Validate the stored master token against the selected backend.",
+    confirm: false,
+  },
   [op("GET", "/schedule")]: {
     title: "Get schedule",
     description: "Fetch the raw venue schedule for one venue.",

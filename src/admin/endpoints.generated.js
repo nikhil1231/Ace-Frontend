@@ -4,6 +4,17 @@
 
 export const GENERATED_ENDPOINTS = [
   {
+    "id": "admin-auth-check-get",
+    "method": "GET",
+    "path": "/admin/auth/check",
+    "section": "overview",
+    "title": "Check Admin Auth",
+    "description": "Check Admin Auth",
+    "confirm": false,
+    "fields": [],
+    "initialValues": {}
+  },
+  {
     "id": "booking-book-post",
     "method": "POST",
     "path": "/booking/book",

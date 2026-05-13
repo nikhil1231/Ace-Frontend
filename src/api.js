@@ -320,6 +320,13 @@ export const cancelBooking = async (venue, sessionId, username) =>
     requiresAuth: true,
   });
 
+export const checkAdminAuth = async ({ environment } = {}) =>
+  requestJson({
+    path: "/admin/auth/check",
+    requiresAuth: true,
+    environment,
+  });
+
 export const getLogSources = async ({ environment } = {}) =>
   requestJson({
     path: "/logs/sources",
