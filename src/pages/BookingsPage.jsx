@@ -22,6 +22,8 @@ import "./BookingsPage.css";
 
 const TARGET_TAB = "targets";
 const ACTIONS_TAB = "actions";
+const BOOKING_FORM_STORAGE_KEY = "ACE_BOOKING_FORMS_V1";
+const TIME_INPUT_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
 const buildDefaultTargetFormValues = () => ({
   venue: "",
@@ -31,6 +33,94 @@ const buildDefaultTargetFormValues = () => ({
   numCourts: "1",
   recurringWeekly: false,
 });
+
+const canUseStorage = () =>
+  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+
+const sanitizeDateInput = (value, fallbackValue) =>
+  typeof value === "string" &&
+  (value === "" || /^\d{4}-\d{2}-\d{2}$/.test(value))
+    ? value
+    : fallbackValue;
+
+const sanitizeTimeInput = (value, fallbackValue) =>
+  typeof value === "string" && (value === "" || TIME_INPUT_PATTERN.test(value))
+    ? value
+    : fallbackValue;
+
+const sanitizeCourtsInput = (value, fallbackValue) => {
+  if (value === "") {
+    return "";
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed >= 1 ? String(parsed) : fallbackValue;
+};
+
+const sanitizeTargetFormValues = (value) => {
+  const defaults = buildDefaultTargetFormValues();
+  const formValues = value && typeof value === "object" ? value : {};
+
+  return {
+    venue:
+      typeof formValues.venue === "string"
+        ? formValues.venue
+        : defaults.venue,
+    date: sanitizeDateInput(formValues.date, defaults.date),
+    startTime: sanitizeTimeInput(formValues.startTime, defaults.startTime),
+    endTime: sanitizeTimeInput(formValues.endTime, defaults.endTime),
+    numCourts: sanitizeCourtsInput(formValues.numCourts, defaults.numCourts),
+    recurringWeekly: Boolean(formValues.recurringWeekly),
+  };
+};
+
+const readPersistedBookingFormState = () => {
+  const defaults = {
+    targetFormValues: buildDefaultTargetFormValues(),
+    targetActionValues: buildDefaultTargetFormValues(),
+    dryRun: true,
+  };
+
+  if (!canUseStorage()) {
+    return defaults;
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(BOOKING_FORM_STORAGE_KEY);
+    if (!rawValue) {
+      return defaults;
+    }
+
+    const parsed = JSON.parse(rawValue);
+    return {
+      targetFormValues: sanitizeTargetFormValues(parsed?.targetFormValues),
+      targetActionValues: sanitizeTargetFormValues(parsed?.targetActionValues),
+      dryRun:
+        typeof parsed?.dryRun === "boolean" ? parsed.dryRun : defaults.dryRun,
+    };
+  } catch (error) {
+    return defaults;
+  }
+};
+
+const persistBookingFormState = (state) => {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      BOOKING_FORM_STORAGE_KEY,
+      JSON.stringify({
+        targetFormValues: sanitizeTargetFormValues(state?.targetFormValues),
+        targetActionValues: sanitizeTargetFormValues(state?.targetActionValues),
+        dryRun: Boolean(state?.dryRun),
+      })
+    );
+  } catch (error) {
+    // Storage can fail in private modes or under quota; the page still works.
+  }
+};
 
 const regroupBookings = (bookings) => {
   const sortedBookings = [...bookings].sort(
@@ -271,6 +361,10 @@ const BookingsPage = () => {
   const navigate = useNavigate();
   const targetsPanelRef = useRef(null);
   const { hasAdminAccess } = useAppSettings();
+  const persistedBookingFormState = useMemo(
+    () => readPersistedBookingFormState(),
+    []
+  );
 
   const [bookings, setBookings] = useState({});
   const [lastUpdatedTime, setLastUpdatedTime] = useState(null);
@@ -299,13 +393,13 @@ const BookingsPage = () => {
   const [isBookingTargetNow, setIsBookingTargetNow] = useState(false);
   const [isFindingSlots, setIsFindingSlots] = useState(false);
 
-  const [targetFormValues, setTargetFormValues] = useState(() =>
-    buildDefaultTargetFormValues()
+  const [targetFormValues, setTargetFormValues] = useState(
+    persistedBookingFormState.targetFormValues
   );
-  const [targetActionValues, setTargetActionValues] = useState(() =>
-    buildDefaultTargetFormValues()
+  const [targetActionValues, setTargetActionValues] = useState(
+    persistedBookingFormState.targetActionValues
   );
-  const [dryRun, setDryRun] = useState(true);
+  const [dryRun, setDryRun] = useState(persistedBookingFormState.dryRun);
   const [findResultRaw, setFindResultRaw] = useState(null);
   const [findResultSlots, setFindResultSlots] = useState([]);
   const [activeTab, setActiveTab] = useState(TARGET_TAB);
@@ -427,6 +521,14 @@ const BookingsPage = () => {
     loadBookingTargets({ initial: true });
     loadVenues();
   }, [loadBookings, loadBookingTargets, loadVenues]);
+
+  useEffect(() => {
+    persistBookingFormState({
+      targetFormValues,
+      targetActionValues,
+      dryRun,
+    });
+  }, [dryRun, targetActionValues, targetFormValues]);
 
   useEffect(() => {
     const prefill = location.state?.targetActionPrefill;
@@ -753,6 +855,7 @@ const BookingsPage = () => {
           type="text"
           value={value}
           placeholder={isLoadingVenues ? "Loading venues..." : "Enter venue (slug)"}
+          onInput={(event) => onChange(event.target.value)}
           onChange={(event) => onChange(event.target.value)}
           disabled={isLoadingVenues}
           required
@@ -774,6 +877,7 @@ const BookingsPage = () => {
             className="bookings-input bookings-mono"
             type="date"
             value={values.date}
+            onInput={(event) => onChange("date", event.target.value)}
             onChange={(event) => onChange("date", event.target.value)}
             required
           />
@@ -787,6 +891,7 @@ const BookingsPage = () => {
             min={1}
             step={1}
             value={values.numCourts}
+            onInput={(event) => onChange("numCourts", event.target.value)}
             onChange={(event) => onChange("numCourts", event.target.value)}
             required
           />
@@ -801,6 +906,7 @@ const BookingsPage = () => {
             type="time"
             step={1800}
             value={values.startTime}
+            onInput={(event) => onChange("startTime", event.target.value)}
             onChange={(event) => onChange("startTime", event.target.value)}
             required
           />
@@ -813,6 +919,7 @@ const BookingsPage = () => {
             type="time"
             step={1800}
             value={values.endTime}
+            onInput={(event) => onChange("endTime", event.target.value)}
             onChange={(event) => onChange("endTime", event.target.value)}
             required
           />

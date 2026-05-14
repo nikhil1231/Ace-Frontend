@@ -22,6 +22,11 @@ import {
 } from "../api";
 import { fdate, fdatetime, minutesToTime } from "../util";
 
+const VENUE_SELECTION_STORAGE_KEY = "ACE_VENUE_SELECTION_V1";
+
+const canUseStorage = () =>
+  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+
 const normalizeVenues = (value) => {
   if (!Array.isArray(value)) {
     return [];
@@ -30,6 +35,41 @@ const normalizeVenues = (value) => {
   return value
     .filter((venue) => typeof venue === "string" && venue.trim().length > 0)
     .sort((first, second) => first.localeCompare(second));
+};
+
+const readPersistedSelectedVenue = () => {
+  if (!canUseStorage()) {
+    return "";
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(VENUE_SELECTION_STORAGE_KEY);
+    if (!rawValue) {
+      return "";
+    }
+
+    const parsed = JSON.parse(rawValue);
+    return typeof parsed?.selectedVenue === "string" ? parsed.selectedVenue : "";
+  } catch (error) {
+    return "";
+  }
+};
+
+const persistSelectedVenue = (selectedVenue) => {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      VENUE_SELECTION_STORAGE_KEY,
+      JSON.stringify({
+        selectedVenue: typeof selectedVenue === "string" ? selectedVenue : "",
+      })
+    );
+  } catch (error) {
+    // Ignore storage write errors; selection remains usable for this session.
+  }
 };
 
 const formatValue = (value) => {
@@ -93,7 +133,9 @@ const SETTINGS_SUMMARY_FIELDS = [
 
 const VenuePage = () => {
   const [venues, setVenues] = useState([]);
-  const [selectedVenue, setSelectedVenue] = useState("");
+  const [selectedVenue, setSelectedVenue] = useState(() =>
+    readPersistedSelectedVenue()
+  );
   const [isLoadingVenues, setIsLoadingVenues] = useState(true);
   const [isLoadingVenueData, setIsLoadingVenueData] = useState(false);
   const [error, setError] = useState("");
@@ -147,6 +189,10 @@ const VenuePage = () => {
       isCancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    persistSelectedVenue(selectedVenue);
+  }, [selectedVenue]);
 
   useEffect(() => {
     if (!selectedVenue) {
