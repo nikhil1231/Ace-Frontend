@@ -6,9 +6,21 @@
 }
 
 .app-navbar .navbar-brand {
+  align-items: center;
+  display: inline-flex;
   font-size: 1.35rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  gap: 0.55rem;
+  letter-spacing: 0;
+}
+
+.navbar-brand-icon {
+  border-radius: 8px;
+  display: block;
+  flex: 0 0 auto;
+  height: 2rem;
+  object-fit: cover;
+  width: 2rem;
 }
 
 .app-navbar .nav-link {

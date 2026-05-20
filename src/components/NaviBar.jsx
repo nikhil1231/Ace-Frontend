@@ -8,6 +8,7 @@ import { useAppSettings } from "../context/AppSettingsContext";
 
 const Navibar = () => {
   const { hasAdminAccess, selectedEnvironment } = useAppSettings();
+  const brandIcon = `${process.env.PUBLIC_URL}/ace-icon.png`;
 
   const environmentLabel =
     selectedEnvironment === "local" ? "Local backend" : "Hosted backend";
@@ -16,6 +17,7 @@ const Navibar = () => {
     <Navbar bg="light" expand="lg" className="app-navbar shadow-sm">
       <Container fluid="lg">
         <Navbar.Brand as={NavLink} to="/" end>
+          <img className="navbar-brand-icon" src={brandIcon} alt="" />
           Ace
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="navbar-nav" />
