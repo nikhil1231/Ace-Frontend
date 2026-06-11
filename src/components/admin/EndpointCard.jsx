@@ -18,8 +18,10 @@ import {
 } from "../../admin/runtime";
 import { useAppSettings } from "../../context/AppSettingsContext";
 import {
+  clampDateToToday,
   deepClone,
   deleteEndpointPreset,
+  getToday,
   getEndpointPresets,
   getRequestHistory,
   minutesToTime,
@@ -69,6 +71,19 @@ const Field = ({ endpoint, field, formValues, setFormValues }) => {
   const value = getValueAtPath(formValues, field.path);
   const controlId = `${endpoint.id}-${field.path.replaceAll(".", "-")}`;
 
+  useEffect(() => {
+    if (field.type !== "date") {
+      return;
+    }
+
+    const normalizedDate = clampDateToToday(value);
+    if (value !== normalizedDate) {
+      setFormValues((currentValue) =>
+        setValueAtPath(currentValue, field.path, normalizedDate)
+      );
+    }
+  }, [field.path, field.type, setFormValues, value]);
+
   if (field.type === "checkbox") {
     return (
       <Col md={field.colMd || 6} className="mb-3">
@@ -99,13 +114,23 @@ const Field = ({ endpoint, field, formValues, setFormValues }) => {
       : field.type;
 
   const inputValue =
-    field.type === "minutes-time" ? minutesToTime(value) || "" : value ?? "";
+    field.type === "minutes-time"
+      ? minutesToTime(value) || ""
+      : field.type === "date"
+      ? clampDateToToday(value)
+      : value ?? "";
 
   const handleChange = (event) => {
     const nextValue =
       field.type === "minutes-time"
         ? timeToMinutes(event.target.value)
+        : field.type === "date"
+        ? clampDateToToday(event.target.value)
         : event.target.value;
+
+    if (field.type === "date" && event.target.value !== nextValue) {
+      event.target.value = nextValue;
+    }
 
     setFormValues((currentValue) =>
       setValueAtPath(currentValue, field.path, nextValue)
@@ -141,8 +166,10 @@ const Field = ({ endpoint, field, formValues, setFormValues }) => {
             value={inputValue}
             placeholder={field.placeholder}
             onChange={handleChange}
+            onBlur={field.type === "date" ? handleChange : undefined}
+            onInvalid={field.type === "date" ? handleChange : undefined}
             required={field.required}
-            min={field.min}
+            min={field.type === "date" ? getToday() : field.min}
             step={field.step}
           />
         ) : null}

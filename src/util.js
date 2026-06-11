@@ -91,7 +91,23 @@ const resolveEnvironmentKey = (environment) =>
 
 export const deepClone = (value) => JSON.parse(JSON.stringify(value));
 
-export const getToday = () => new Date().toISOString().slice(0, 10);
+export const getToday = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+export const clampDateToToday = (value) => {
+  const today = getToday();
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return today;
+  }
+
+  return value < today ? today : value;
+};
 
 export const readAppSettings = () => {
   const storedValue = readStoredJson(APP_SETTINGS_KEY, {});

@@ -19,7 +19,13 @@ import {
   putBookingTarget,
 } from "../api";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { fdate, getToday, minutesToTime, timeToMinutes } from "../util";
+import {
+  clampDateToToday,
+  fdate,
+  getToday,
+  minutesToTime,
+  timeToMinutes,
+} from "../util";
 
 const buildDefaultFormValues = () => ({
   venue: "",
@@ -94,6 +100,7 @@ const TargetsPage = () => {
   const [deletingTargetKey, setDeletingTargetKey] = useState("");
 
   const [formValues, setFormValues] = useState(() => buildDefaultFormValues());
+  const todayDate = getToday();
 
   const sortedTargets = useMemo(
     () => [...bookingTargets].sort(sortBookingTargets),
@@ -159,8 +166,16 @@ const TargetsPage = () => {
   const handleFieldChange = (fieldName, value) => {
     setFormValues((currentValue) => ({
       ...currentValue,
-      [fieldName]: value,
+      [fieldName]: fieldName === "date" ? clampDateToToday(value) : value,
     }));
+  };
+
+  const handleDateFieldChange = (event) => {
+    const normalizedDate = clampDateToToday(event.target.value);
+    if (event.target.value !== normalizedDate) {
+      event.target.value = normalizedDate;
+    }
+    handleFieldChange("date", normalizedDate);
   };
 
   const resetForm = () => {
@@ -184,7 +199,8 @@ const TargetsPage = () => {
       return;
     }
 
-    if (!formValues.date) {
+    const normalizedDate = clampDateToToday(formValues.date);
+    if (!normalizedDate) {
       setSubmitError("Date is required.");
       return;
     }
@@ -213,12 +229,16 @@ const TargetsPage = () => {
       setIsSavingTarget(true);
       await putBookingTarget({
         Venue: venue,
-        Date: formValues.date,
+        Date: normalizedDate,
         StartTime: startTime,
         EndTime: endTime,
         NumCourts: numCourts,
         RecurringWeekly: Boolean(formValues.recurringWeekly),
       });
+      setFormValues((currentValue) => ({
+        ...currentValue,
+        date: normalizedDate,
+      }));
       setSubmitSuccess("Booking target added.");
       await loadBookingTargets();
     } catch (requestError) {
@@ -354,7 +374,10 @@ const TargetsPage = () => {
                   <Form.Control
                     type="date"
                     value={formValues.date}
-                    onChange={(event) => handleFieldChange("date", event.target.value)}
+                    min={todayDate}
+                    onChange={handleDateFieldChange}
+                    onBlur={handleDateFieldChange}
+                    onInvalid={handleDateFieldChange}
                     required
                   />
                 </Form.Group>

@@ -57,6 +57,11 @@ export const ENDPOINT_OVERRIDES = {
   [op("GET", "/schedule")]: {
     title: "Get schedule",
     description: "Fetch the raw venue schedule for one venue.",
+    fieldOverrides: {
+      "query.date": {
+        type: "date",
+      },
+    },
     initialValues: {
       "query.date": "__TODAY__",
     },
@@ -64,6 +69,15 @@ export const ENDPOINT_OVERRIDES = {
   [op("GET", "/schedule/availability")]: {
     title: "Find availability",
     description: "Search across venues using the backend availability filters.",
+    fieldOverrides: {
+      "query.date": {
+        type: "date",
+      },
+    },
+    initialValues: {
+      "query.date": "__TODAY__",
+      "query.n_days": "",
+    },
   },
   [op("POST", "/booking/targets/find")]: {
     title: "Find bookable slots",

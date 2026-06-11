@@ -12,7 +12,7 @@ import {
 
 import { getAvailability, getSchedule, getVenues } from "../api";
 import AvailabilityResultsPanel from "../components/AvailabilityResultsPanel";
-import { getToday, minutesToTime } from "../util";
+import { clampDateToToday, getToday, minutesToTime } from "../util";
 
 const MIN_N_DAYS = 1;
 const DEFAULT_N_DAYS = 7;
@@ -68,11 +68,7 @@ const sanitizeSearchMode = (value) =>
 const sanitizeQueryMode = (value) => (value === "n_days" ? "n_days" : "date");
 
 const sanitizeDateValue = (value) => {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return getToday();
-  }
-
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : getToday();
+  return clampDateToToday(typeof value === "string" ? value.trim() : value);
 };
 
 const sanitizeNDaysValue = (value) => {
@@ -396,6 +392,7 @@ const buildTimeMarks = (startTime, endTime) => {
 
 const SchedulePage = () => {
   const persistedSearchState = useMemo(() => readPersistedSearchState(), []);
+  const todayDate = getToday();
   const [searchMode, setSearchMode] = useState(persistedSearchState.searchMode);
 
   const [venues, setVenues] = useState([]);
@@ -569,7 +566,9 @@ const SchedulePage = () => {
   const persistCurrentState = ({
     nextSearchMode = searchMode,
     nextRecentVenues = recentVenues,
+    nextScheduleDate = scheduleDate,
     nextScheduleNDays = scheduleNDays,
+    nextAvailabilityDate = availabilityDate,
     nextAvailabilityNDays = availabilityNDays,
     nextAvailabilityPostcode = availabilityPostcode,
     nextAvailabilityMaxVenues = availabilityMaxVenues,
@@ -583,11 +582,11 @@ const SchedulePage = () => {
       searchMode: nextSearchMode,
       selectedVenue,
       scheduleQueryMode,
-      scheduleDate,
+      scheduleDate: nextScheduleDate,
       scheduleNDays: nextScheduleNDays,
       recentVenues: nextRecentVenues,
       availabilityQueryMode,
-      availabilityDate,
+      availabilityDate: nextAvailabilityDate,
       availabilityNDays: nextAvailabilityNDays,
       availabilityPostcode: nextAvailabilityPostcode,
       availabilityMaxVenues: nextAvailabilityMaxVenues,
@@ -599,6 +598,14 @@ const SchedulePage = () => {
     });
   };
 
+  const handleDateInputChange = (setter) => (event) => {
+    const normalizedDate = clampDateToToday(event.target.value);
+    if (event.target.value !== normalizedDate) {
+      event.target.value = normalizedDate;
+    }
+    setter(normalizedDate);
+  };
+
   const handleScheduleRequest = async (event) => {
     event.preventDefault();
 
@@ -608,7 +615,8 @@ const SchedulePage = () => {
         return;
       }
 
-      if (scheduleQueryMode === "date" && !scheduleDate) {
+      const normalizedScheduleDate = clampDateToToday(scheduleDate);
+      if (scheduleQueryMode === "date" && !normalizedScheduleDate) {
         setError("Please select a date.");
         return;
       }
@@ -630,17 +638,19 @@ const SchedulePage = () => {
       try {
         const nextSchedule = await getSchedule({
           venue: selectedVenue,
-          date: scheduleQueryMode === "date" ? scheduleDate : undefined,
+          date: scheduleQueryMode === "date" ? normalizedScheduleDate : undefined,
           nDays: scheduleQueryMode === "n_days" ? parsedNDays : undefined,
         });
 
         const nextRecentVenues = updateRecentVenues(recentVenues, selectedVenue);
         setScheduleData(nextSchedule);
+        setScheduleDate(normalizedScheduleDate);
         setCurrentDayIndex(0);
         setRecentVenues(nextRecentVenues);
         persistCurrentState({
           nextSearchMode: "schedule",
           nextRecentVenues,
+          nextScheduleDate: normalizedScheduleDate,
           nextScheduleNDays:
             scheduleQueryMode === "n_days" ? String(parsedNDays) : scheduleNDays,
         });
@@ -659,7 +669,8 @@ const SchedulePage = () => {
       return;
     }
 
-    if (availabilityQueryMode === "date" && !availabilityDate) {
+    const normalizedAvailabilityDate = clampDateToToday(availabilityDate);
+    if (availabilityQueryMode === "date" && !normalizedAvailabilityDate) {
       setError("Please select a date.");
       return;
     }
@@ -711,7 +722,8 @@ const SchedulePage = () => {
       const nextAvailability = await getAvailability({
         postcode: normalizedPostcode,
         maxVenues: parsedMaxVenues,
-        date: availabilityQueryMode === "date" ? availabilityDate : undefined,
+        date:
+          availabilityQueryMode === "date" ? normalizedAvailabilityDate : undefined,
         nDays:
           availabilityQueryMode === "n_days"
             ? parsedAvailabilityNDays
@@ -725,6 +737,7 @@ const SchedulePage = () => {
 
       setAvailabilitySlots(Array.isArray(nextAvailability) ? nextAvailability : []);
       setAvailabilityPostcode(normalizedPostcode);
+      setAvailabilityDate(normalizedAvailabilityDate);
       setAvailabilityMinStartTime(normalizedMinStartTime);
       setAvailabilityMaxStartTime(normalizedMaxStartTime);
       setAvailabilityMinEndTime(normalizedMinEndTime);
@@ -732,6 +745,7 @@ const SchedulePage = () => {
       setAvailabilityMinLength(normalizedMinLength);
       persistCurrentState({
         nextSearchMode: "availability",
+        nextAvailabilityDate: normalizedAvailabilityDate,
         nextAvailabilityPostcode: normalizedPostcode,
         nextAvailabilityNDays:
           availabilityQueryMode === "n_days"
@@ -885,7 +899,10 @@ const SchedulePage = () => {
                         <Form.Control
                           type="date"
                           value={scheduleDate}
-                          onChange={(event) => setScheduleDate(event.target.value)}
+                          min={todayDate}
+                          onChange={handleDateInputChange(setScheduleDate)}
+                          onBlur={handleDateInputChange(setScheduleDate)}
+                          onInvalid={handleDateInputChange(setScheduleDate)}
                         />
                       </Form.Group>
                     ) : (
@@ -1051,7 +1068,10 @@ const SchedulePage = () => {
                         <Form.Control
                           type="date"
                           value={availabilityDate}
-                          onChange={(event) => setAvailabilityDate(event.target.value)}
+                          min={todayDate}
+                          onChange={handleDateInputChange(setAvailabilityDate)}
+                          onBlur={handleDateInputChange(setAvailabilityDate)}
+                          onInvalid={handleDateInputChange(setAvailabilityDate)}
                         />
                       </Form.Group>
                     ) : (
@@ -1252,4 +1272,3 @@ const SchedulePage = () => {
 };
 
 export default SchedulePage;
-

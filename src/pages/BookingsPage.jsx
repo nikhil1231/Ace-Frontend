@@ -16,7 +16,13 @@ import {
   refreshBookings,
 } from "../api";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { fdatetime, getToday, minutesToTime, timeToMinutes } from "../util";
+import {
+  clampDateToToday,
+  fdatetime,
+  getToday,
+  minutesToTime,
+  timeToMinutes,
+} from "../util";
 
 import "./BookingsPage.css";
 
@@ -37,11 +43,13 @@ const buildDefaultTargetFormValues = () => ({
 const canUseStorage = () =>
   typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 
-const sanitizeDateInput = (value, fallbackValue) =>
-  typeof value === "string" &&
-  (value === "" || /^\d{4}-\d{2}-\d{2}$/.test(value))
-    ? value
-    : fallbackValue;
+const sanitizeDateInput = (value, fallbackValue) => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return fallbackValue;
+  }
+
+  return clampDateToToday(value);
+};
 
 const sanitizeTimeInput = (value, fallbackValue) =>
   typeof value === "string" && (value === "" || TIME_INPUT_PATTERN.test(value))
@@ -275,7 +283,8 @@ const buildBookingTargetPayload = (formValues) => {
     return { error: "Venue is required." };
   }
 
-  if (!formValues.date) {
+  const normalizedDate = clampDateToToday(formValues.date);
+  if (!normalizedDate) {
     return { error: "Date is required." };
   }
 
@@ -299,7 +308,7 @@ const buildBookingTargetPayload = (formValues) => {
   return {
     payload: {
       Venue: venue,
-      Date: formValues.date,
+      Date: normalizedDate,
       StartTime: startTime,
       EndTime: endTime,
       NumCourts: numCourts,
@@ -399,6 +408,7 @@ const BookingsPage = () => {
   const [targetActionValues, setTargetActionValues] = useState(
     persistedBookingFormState.targetActionValues
   );
+  const todayDate = getToday();
   const [dryRun, setDryRun] = useState(persistedBookingFormState.dryRun);
   const [findResultRaw, setFindResultRaw] = useState(null);
   const [findResultSlots, setFindResultSlots] = useState([]);
@@ -541,7 +551,10 @@ const BookingsPage = () => {
       ...currentValue,
       venue:
         typeof prefill.venue === "string" ? prefill.venue : currentValue.venue,
-      date: typeof prefill.date === "string" ? prefill.date : currentValue.date,
+      date:
+        typeof prefill.date === "string"
+          ? clampDateToToday(prefill.date)
+          : currentValue.date,
       startTime:
         typeof prefill.startTime === "string"
           ? prefill.startTime
@@ -595,14 +608,14 @@ const BookingsPage = () => {
   const handleTargetFormChange = (fieldName, value) => {
     setTargetFormValues((currentValue) => ({
       ...currentValue,
-      [fieldName]: value,
+      [fieldName]: fieldName === "date" ? clampDateToToday(value) : value,
     }));
   };
 
   const handleTargetActionFormChange = (fieldName, value) => {
     setTargetActionValues((currentValue) => ({
       ...currentValue,
-      [fieldName]: value,
+      [fieldName]: fieldName === "date" ? clampDateToToday(value) : value,
     }));
   };
 
@@ -864,6 +877,14 @@ const BookingsPage = () => {
     </div>
   );
 
+  const handleTargetDateInputEvent = (onChange) => (event) => {
+    const normalizedDate = clampDateToToday(event.target.value);
+    if (event.target.value !== normalizedDate) {
+      event.target.value = normalizedDate;
+    }
+    onChange("date", normalizedDate);
+  };
+
   const renderTargetFields = (idPrefix, values, onChange) => (
     <>
       <div className="bookings-form-row bookings-form-row-three">
@@ -877,8 +898,11 @@ const BookingsPage = () => {
             className="bookings-input bookings-mono"
             type="date"
             value={values.date}
-            onInput={(event) => onChange("date", event.target.value)}
-            onChange={(event) => onChange("date", event.target.value)}
+            min={todayDate}
+            onInput={handleTargetDateInputEvent(onChange)}
+            onChange={handleTargetDateInputEvent(onChange)}
+            onBlur={handleTargetDateInputEvent(onChange)}
+            onInvalid={handleTargetDateInputEvent(onChange)}
             required
           />
         </div>
