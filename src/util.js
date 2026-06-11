@@ -4,7 +4,7 @@ const REQUEST_PRESETS_KEY = "ACE_REQUEST_PRESETS_V1";
 
 export const SETTINGS_CHANGE_EVENT = "ace-settings-change";
 export const ADMIN_DATA_CHANGE_EVENT = "ace-admin-data-change";
-export const DEFAULT_BACKEND_ENVIRONMENT = "local";
+export const DEFAULT_BACKEND_ENVIRONMENT = "hosted";
 
 const LOCAL_BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL_LOCAL || "http://localhost:8000";
