@@ -1,12 +1,8 @@
 import React from "react";
-import { Badge, Container, Nav } from "react-bootstrap";
+import { Container, Nav } from "react-bootstrap";
 import { NavLink, Outlet } from "react-router-dom";
 
-import { useAppSettings } from "../../context/AppSettingsContext";
-
 const AdminPage = () => {
-  const { selectedEnvironment } = useAppSettings();
-
   return (
     <Container className="page-container">
       <div className="page-heading">
@@ -17,9 +13,6 @@ const AdminPage = () => {
             for diagnostics, endpoints, presets, and recent request history.
           </p>
         </div>
-        <Badge bg={selectedEnvironment === "local" ? "success" : "primary"}>
-          {selectedEnvironment === "local" ? "Local" : "Hosted"}
-        </Badge>
       </div>
 
       <Nav variant="tabs" className="admin-tabs">

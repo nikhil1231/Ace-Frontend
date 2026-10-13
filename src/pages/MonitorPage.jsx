@@ -4,7 +4,7 @@ import { FaCheck, FaClock, FaExclamationTriangle, FaServer, FaDesktop, FaMicroch
 import { useSearchParams } from "react-router-dom";
 
 import { requestApi } from "../api";
-import { useAppSettings } from "../context/AppSettingsContext";
+import { useSession } from "../context/SessionContext";
 import { fdatetime, minutesToTime } from "../util";
 
 import "./MonitorPage.css";
@@ -170,7 +170,7 @@ const UpcomingTarget = ({ item }) => (
 );
 
 const MonitorPage = () => {
-  const { hasAdminAccess } = useAppSettings();
+  const { isAdmin, isLoading: isSessionLoading } = useSession();
   const [searchParams] = useSearchParams();
   const highlightedRunId = searchParams.get("runId");
   const pollStartedAt = useRef(Date.now());
@@ -181,7 +181,7 @@ const MonitorPage = () => {
   const [lastPoll, setLastPoll] = useState(null);
 
   const loadStatus = useCallback(async ({ initial = false } = {}) => {
-    if (!hasAdminAccess) {
+    if (!isAdmin) {
       setIsLoading(false);
       return;
     }
@@ -192,7 +192,6 @@ const MonitorPage = () => {
 
     const result = await requestApi({
       path: "/monitor/status",
-      requiresAuth: true,
     });
 
     if (result.ok) {
@@ -220,7 +219,7 @@ const MonitorPage = () => {
     }
 
     setIsLoading(false);
-  }, [hasAdminAccess]);
+  }, [isAdmin]);
 
   useEffect(() => {
     loadStatus({ initial: true });
@@ -232,9 +231,9 @@ const MonitorPage = () => {
     const backend = payload?.components?.backend || {
       key: "backend",
       label: "DigitalOcean backend",
-      status: isLoading || !hasAdminAccess ? "unknown" : "down",
-      detail: !hasAdminAccess
-        ? "Admin token required for monitor checks."
+      status: isLoading || !isAdmin ? "unknown" : "down",
+      detail: !isAdmin
+        ? "Monitor checks are admin-only."
         : isLoading
           ? "Checking backend..."
           : "No backend response.",
@@ -253,7 +252,7 @@ const MonitorPage = () => {
     };
 
     return [frontend, backend, worker];
-  }, [hasAdminAccess, isLoading, payload]);
+  }, [isAdmin, isLoading, payload]);
 
   const runs = useMemo(() => {
     const active = payload?.runs?.active || [];
@@ -290,9 +289,9 @@ const MonitorPage = () => {
         </div>
       </section>
 
-      {!hasAdminAccess ? (
+      {!isAdmin && !isSessionLoading ? (
         <Alert variant="warning">
-          Admin token is required to view booking monitor data.
+          Booking monitor data is admin-only.
         </Alert>
       ) : null}
 

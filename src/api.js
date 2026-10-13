@@ -1,4 +1,11 @@
-import { getBackendUrl, getToken } from "./util";
+import { API_BASE_URL } from "./util";
+
+// Cloudflare Access answers an expired session with a redirect to its login page. Fetches
+// don't follow it (redirect: "manual"), so it shows up as an opaque redirect instead.
+const SESSION_EXPIRED_MESSAGE =
+  "Your sign-in has expired. Reload the page to sign in again.";
+
+const isAccessRedirect = (response) => response.type === "opaqueredirect";
 
 const extractErrorMessage = (payload, fallback = "Request failed") => {
   if (!payload) {
@@ -28,7 +35,7 @@ const normalizeQueryValue = (value) => {
   return String(value);
 };
 
-export const buildApiUrl = (path, query = {}, environment) => {
+export const buildApiUrl = (path, query = {}) => {
   const searchParams = new URLSearchParams();
 
   Object.entries(query).forEach(([key, value]) => {
@@ -39,9 +46,7 @@ export const buildApiUrl = (path, query = {}, environment) => {
   });
 
   const queryString = searchParams.toString();
-  const baseUrl = getBackendUrl(environment);
-
-  return `${baseUrl}${path}${queryString ? `?${queryString}` : ""}`;
+  return `${API_BASE_URL}${path}${queryString ? `?${queryString}` : ""}`;
 };
 
 const parseResponsePayload = async (response) => {
@@ -63,11 +68,9 @@ export const requestApi = async ({
   path,
   query = {},
   body,
-  requiresAuth = false,
-  environment,
 }) => {
   const startedAt = performance.now();
-  const url = buildApiUrl(path, query, environment);
+  const url = buildApiUrl(path, query);
   const headers = new Headers({
     Accept: "application/json",
   });
@@ -76,20 +79,27 @@ export const requestApi = async ({
     headers.set("Content-Type", "application/json");
   }
 
-  if (requiresAuth) {
-    const token = getToken(environment);
-
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
-  }
-
   try {
     const response = await fetch(url, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      redirect: "manual",
     });
+
+    if (isAccessRedirect(response)) {
+      return {
+        ok: false,
+        status: 401,
+        statusText: "Signed out",
+        durationMs: Math.round(performance.now() - startedAt),
+        data: null,
+        error: SESSION_EXPIRED_MESSAGE,
+        payload: null,
+        url,
+        method,
+      };
+    }
 
     const payload = await parseResponsePayload(response);
 
@@ -145,7 +155,6 @@ export const putBookingTarget = async (bookingTarget) => {
     method: "PUT",
     path: "/booking/targets",
     body: bookingTarget,
-    requiresAuth: true,
   });
 };
 
@@ -158,7 +167,6 @@ export const deleteBookingTarget = async (bookingTarget) => {
     method: "DELETE",
     path: "/booking/targets",
     body: bookingTarget,
-    requiresAuth: true,
   });
 };
 
@@ -166,7 +174,6 @@ export const bookTargets = async () =>
   requestJson({
     method: "POST",
     path: "/booking/book",
-    requiresAuth: true,
   });
 
 export const bookTargetNow = async (bookingTarget, { dryRun = true } = {}) => {
@@ -181,7 +188,6 @@ export const bookTargetNow = async (bookingTarget, { dryRun = true } = {}) => {
       dry_run: Boolean(dryRun),
     },
     body: bookingTarget,
-    requiresAuth: true,
   });
 };
 
@@ -201,13 +207,11 @@ export const cleanBookingTargets = async () =>
   requestJson({
     method: "POST",
     path: "/booking/targets/clean",
-    requiresAuth: true,
   });
 
 export const getMonitorStatus = async () =>
   requestJson({
     path: "/monitor/status",
-    requiresAuth: true,
   });
 
 export const getVenues = async () => requestJson({ path: "/venues" });
@@ -311,7 +315,6 @@ export const refreshBookings = async () =>
   requestJson({
     method: "POST",
     path: "/booking/bookings",
-    requiresAuth: true,
   });
 
 export const cancelBooking = async (venue, sessionId, username) =>
@@ -323,62 +326,52 @@ export const cancelBooking = async (venue, sessionId, username) =>
       username,
       session_id: sessionId,
     },
-    requiresAuth: true,
   });
 
-export const checkAdminAuth = async ({ environment } = {}) =>
+export const getMe = async () => requestJson({ path: "/me" });
+
+export const checkAdminAuth = async () =>
   requestJson({
     path: "/admin/auth/check",
-    requiresAuth: true,
-    environment,
   });
 
-export const getLogSources = async ({ environment } = {}) =>
+export const getLogSources = async () =>
   requestJson({
     path: "/logs/sources",
-    requiresAuth: true,
-    environment,
   });
 
-export const getLogTail = async ({ source, lines, environment } = {}) =>
+export const getLogTail = async ({ source, lines } = {}) =>
   requestJson({
     path: "/logs/tail",
     query: {
       source,
       lines,
     },
-    requiresAuth: true,
-    environment,
   });
 
 export const streamLogFollow = async ({
   source,
   lines,
-  environment,
   signal,
   onEvent,
 }) => {
-  const url = buildApiUrl(
-    "/logs/follow",
-    {
-      source,
-      lines,
-    },
-    environment
-  );
+  const url = buildApiUrl("/logs/follow", {
+    source,
+    lines,
+  });
   const headers = new Headers({
     Accept: "application/x-ndjson",
   });
-  const token = getToken(environment);
-
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
 
   const response = await fetch(url, {
     headers,
     signal,
+    redirect: "manual",
   });
+
+  if (isAccessRedirect(response)) {
+    throw new Error(SESSION_EXPIRED_MESSAGE);
+  }
 
   if (!response.ok) {
     const payload = await parseResponsePayload(response);

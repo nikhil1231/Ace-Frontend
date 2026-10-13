@@ -15,7 +15,7 @@ import {
   putBookingTarget,
   refreshBookings,
 } from "../api";
-import { useAppSettings } from "../context/AppSettingsContext";
+import { useSession } from "../context/SessionContext";
 import {
   clampDateToToday,
   fdatetime,
@@ -369,7 +369,7 @@ const BookingsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const targetsPanelRef = useRef(null);
-  const { hasAdminAccess } = useAppSettings();
+  const { isAdmin, isLoading: isSessionLoading } = useSession();
   const persistedBookingFormState = useMemo(
     () => readPersistedBookingFormState(),
     []
@@ -975,7 +975,7 @@ const BookingsPage = () => {
             type="button"
             className="bookings-btn"
             onClick={handleRefreshBookings}
-            disabled={isRefreshingBookings || !hasAdminAccess}
+            disabled={isRefreshingBookings || !isAdmin}
           >
             {isRefreshingBookings ? "Refreshing..." : "Refresh bookings"}
           </button>
@@ -983,7 +983,7 @@ const BookingsPage = () => {
             type="button"
             className="bookings-btn"
             onClick={handleRunBookingTargets}
-            disabled={isRunningBookTargets || !hasAdminAccess}
+            disabled={isRunningBookTargets || !isAdmin}
           >
             {isRunningBookTargets ? "Running..." : "Run booking targets"}
           </button>
@@ -991,17 +991,17 @@ const BookingsPage = () => {
             type="button"
             className="bookings-btn"
             onClick={handleCleanTargets}
-            disabled={isCleaningTargets || !hasAdminAccess}
+            disabled={isCleaningTargets || !isAdmin}
           >
             {isCleaningTargets ? "Cleaning..." : "Clean stale targets"}
           </button>
         </div>
       </section>
 
-      {!hasAdminAccess ? (
+      {!isAdmin && !isSessionLoading ? (
         <Alert variant="warning" className="bookings-alert">
-          Admin token is required for write actions. Finding bookable slots is
-          available without a token.
+          Write actions are admin-only. Finding bookable slots works for
+          everyone.
         </Alert>
       ) : null}
 
@@ -1079,7 +1079,7 @@ const BookingsPage = () => {
                               type="button"
                               className="bookings-btn bookings-btn-danger"
                               onClick={() => handleCancelBooking(booking)}
-                              disabled={!hasAdminAccess}
+                              disabled={!isAdmin}
                             >
                               Cancel
                             </button>
@@ -1160,7 +1160,7 @@ const BookingsPage = () => {
                     <button
                       type="submit"
                       className="bookings-btn bookings-btn-primary"
-                      disabled={!hasAdminAccess || isSavingTarget || isLoadingVenues}
+                      disabled={!isAdmin || isSavingTarget || isLoadingVenues}
                     >
                       {isSavingTarget ? "Adding..." : "Add target"}
                     </button>
@@ -1229,7 +1229,7 @@ const BookingsPage = () => {
                             className="bookings-btn bookings-btn-danger-outline"
                             onClick={() => handleDeleteTarget(target)}
                             disabled={
-                              !hasAdminAccess ||
+                              !isAdmin ||
                               isSavingTarget ||
                               deletingTargetKey === targetKey
                             }
@@ -1297,7 +1297,7 @@ const BookingsPage = () => {
                       type="button"
                       className="bookings-btn bookings-btn-primary"
                       onClick={handleBookTargetNow}
-                      disabled={!hasAdminAccess || isBookingTargetNow || isFindingSlots}
+                      disabled={!isAdmin || isBookingTargetNow || isFindingSlots}
                     >
                       {isBookingTargetNow ? "Running..." : "Book target now"}
                     </button>

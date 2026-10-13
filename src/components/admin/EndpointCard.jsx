@@ -16,7 +16,6 @@ import {
   getValueAtPath,
   setValueAtPath,
 } from "../../admin/runtime";
-import { useAppSettings } from "../../context/AppSettingsContext";
 import {
   clampDateToToday,
   deepClone,
@@ -182,7 +181,6 @@ const Field = ({ endpoint, field, formValues, setFormValues }) => {
 };
 
 const EndpointCard = ({ endpoint }) => {
-  const { hasAdminAccess, selectedEnvironment } = useAppSettings();
   const [formValues, setFormValues] = useState(() => buildInitialValues(endpoint));
   const [response, setResponse] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -198,26 +196,14 @@ const EndpointCard = ({ endpoint }) => {
     });
   }, []);
 
-  const presets = getEndpointPresets(endpoint.id, selectedEnvironment);
-  const recentHistory = getRequestHistory(selectedEnvironment)
+  const presets = getEndpointPresets(endpoint.id);
+  const recentHistory = getRequestHistory()
     .filter((entry) => entry.endpointId === endpoint.id)
     .slice(0, 3);
 
   const handleSubmit = async () => {
     let request;
     const requiresConfirmation = endpoint.confirm ?? endpoint.method !== "GET";
-
-    if (endpoint.requiresAuth && !hasAdminAccess) {
-      setResponse({
-        ok: false,
-        status: 0,
-        error: "Store a master token in Settings before running this endpoint.",
-        durationMs: 0,
-        payload: null,
-        url: endpoint.path,
-      });
-      return;
-    }
 
     try {
       request = buildRequestFromDescriptor(endpoint, formValues);
@@ -248,7 +234,6 @@ const EndpointCard = ({ endpoint }) => {
       path: endpoint.path,
       query: request.query,
       body: request.body,
-      requiresAuth: endpoint.requiresAuth,
     });
     setResponse(result);
     pushRequestHistory({
@@ -281,7 +266,7 @@ const EndpointCard = ({ endpoint }) => {
       return;
     }
 
-    saveEndpointPreset(endpoint.id, name, formValues, selectedEnvironment);
+    saveEndpointPreset(endpoint.id, name, formValues);
     setDataVersion((currentValue) => currentValue + 1);
   };
 
@@ -290,7 +275,7 @@ const EndpointCard = ({ endpoint }) => {
   };
 
   const handleDeletePreset = (presetId) => {
-    deleteEndpointPreset(endpoint.id, presetId, selectedEnvironment);
+    deleteEndpointPreset(endpoint.id, presetId);
     setDataVersion((currentValue) => currentValue + 1);
   };
 
@@ -307,7 +292,7 @@ const EndpointCard = ({ endpoint }) => {
               {endpoint.method}
             </Badge>
             <Badge bg={endpoint.requiresAuth ? "warning" : "secondary"}>
-              {endpoint.requiresAuth ? "Token required" : "Public"}
+              {endpoint.requiresAuth ? "Admin only" : "Any user"}
             </Badge>
           </div>
         </div>
@@ -358,11 +343,6 @@ const EndpointCard = ({ endpoint }) => {
               Save preset
             </Button>
           </div>
-          {endpoint.requiresAuth && !hasAdminAccess ? (
-            <p className="auth-warning-text">
-              Save a master token in Settings to unlock this endpoint.
-            </p>
-          ) : null}
         </div>
 
         {presets.length > 0 ? (

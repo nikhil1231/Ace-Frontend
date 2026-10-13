@@ -1,33 +1,30 @@
-import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 
 import "./App.css";
 
 import Navibar from "./components/NaviBar";
-import { AppSettingsProvider, useAppSettings } from "./context/AppSettingsContext";
+import { SessionProvider, useSession } from "./context/SessionContext";
 import BookingsPage from "./pages/BookingsPage";
 import MapPage from "./pages/MapPage";
 import MonitorPage from "./pages/MonitorPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import SchedulePage from "./pages/SchedulePage";
-import SettingsPage from "./pages/SettingsPage";
 import VenuePage from "./pages/VenuePage";
 import AdminPage from "./pages/admin/AdminPage";
 import AdminLogsPage from "./pages/admin/AdminLogsPage";
 import AdminOverviewPage from "./pages/admin/AdminOverviewPage";
 import AdminSectionPage from "./pages/admin/AdminSectionPage";
 
+// Hides the admin pages from non-admins; the backend refuses their admin requests anyway.
 const RequireAdminAccess = () => {
-  const location = useLocation();
-  const { hasAdminAccess } = useAppSettings();
+  const { isAdmin, isLoading } = useSession();
 
-  if (!hasAdminAccess) {
-    return (
-      <Navigate
-        to="/settings"
-        replace
-        state={{ redirectTo: `${location.pathname}${location.search}` }}
-      />
-    );
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;
@@ -45,7 +42,7 @@ const AppShell = () => {
           <Route path="/venue" element={<VenuePage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/monitor" element={<MonitorPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings" element={<Navigate to="/" replace />} />
           <Route element={<RequireAdminAccess />}>
             <Route path="/admin" element={<AdminPage />}>
               <Route index element={<AdminOverviewPage />} />
@@ -73,9 +70,9 @@ const AppShell = () => {
 
 function App() {
   return (
-    <AppSettingsProvider>
+    <SessionProvider>
       <AppShell />
-    </AppSettingsProvider>
+    </SessionProvider>
   );
 }
 

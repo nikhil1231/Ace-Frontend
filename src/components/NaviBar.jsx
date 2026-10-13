@@ -4,14 +4,11 @@ import React from "react";
 import { Badge, Container, Nav, Navbar } from "react-bootstrap";
 import { NavLink } from "react-router-dom";
 
-import { useAppSettings } from "../context/AppSettingsContext";
+import { useSession } from "../context/SessionContext";
 
 const Navibar = () => {
-  const { hasAdminAccess, selectedEnvironment } = useAppSettings();
+  const { email, isAdmin } = useSession();
   const brandIcon = `${process.env.PUBLIC_URL}/ace-icon.png`;
-
-  const environmentLabel =
-    selectedEnvironment === "local" ? "Local backend" : "Hosted backend";
 
   return (
     <Navbar bg="light" expand="lg" className="app-navbar shadow-sm">
@@ -38,26 +35,17 @@ const Navibar = () => {
             <Nav.Link as={NavLink} to="/monitor">
               Monitor
             </Nav.Link>
-            {hasAdminAccess ? (
+            {isAdmin ? (
               <Nav.Link as={NavLink} to="/admin" end>
                 Admin
               </Nav.Link>
-            ) : (
-              <Nav.Link as="span" className="disabled admin-disabled-link">
-                Admin
-              </Nav.Link>
-            )}
-            <Nav.Link as={NavLink} to="/settings">
-              Settings
-            </Nav.Link>
+            ) : null}
           </Nav>
           <div className="navbar-status">
-            <Badge bg={selectedEnvironment === "local" ? "success" : "primary"}>
-              {environmentLabel}
-            </Badge>
-            <Badge bg={hasAdminAccess ? "dark" : "secondary"}>
-              {hasAdminAccess ? "Admin unlocked" : "Admin locked"}
-            </Badge>
+            {email ? <span className="navbar-email">{email}</span> : null}
+            {isAdmin ? <Badge bg="dark">Admin</Badge> : null}
+            {/* Cloudflare Access serves this path and ends the Access session. */}
+            <Nav.Link href="/cdn-cgi/access/logout">Sign out</Nav.Link>
           </div>
         </Navbar.Collapse>
       </Container>

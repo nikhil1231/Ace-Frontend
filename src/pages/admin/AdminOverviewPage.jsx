@@ -3,7 +3,7 @@ import { Badge, Button, Card, Col, Row } from "react-bootstrap";
 
 import { buildApiUrl, requestApi } from "../../api";
 import { ADMIN_ENDPOINTS, ADMIN_SECTIONS } from "../../admin/endpoints";
-import { useAppSettings } from "../../context/AppSettingsContext";
+import { useSession } from "../../context/SessionContext";
 import {
   getRequestHistory,
   subscribeToAdminDataChange,
@@ -37,8 +37,7 @@ const diagnosticChecks = [
 ];
 
 const AdminOverviewPage = () => {
-  const { backendUrl, hasAdminAccess, selectedEnvironment, token } =
-    useAppSettings();
+  const { email, isAdmin } = useSession();
   const [diagnostics, setDiagnostics] = useState([]);
   const [isRunningDiagnostics, setIsRunningDiagnostics] = useState(false);
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -49,7 +48,7 @@ const AdminOverviewPage = () => {
     });
   }, []);
 
-  const recentHistory = getRequestHistory(selectedEnvironment).slice(0, 10);
+  const recentHistory = getRequestHistory().slice(0, 10);
   const sectionSummaries = ADMIN_SECTIONS.filter(
     (section) => section.key !== "overview"
   ).map((section) => ({
@@ -80,22 +79,16 @@ const AdminOverviewPage = () => {
               <Card.Title>Session status</Card.Title>
               <div className="overview-list">
                 <div className="overview-list-item">
-                  <span>Environment</span>
-                  <strong>
-                    {selectedEnvironment === "local" ? "Local" : "Hosted"}
-                  </strong>
+                  <span>Signed in as</span>
+                  <strong>{email || "Unknown"}</strong>
                 </div>
                 <div className="overview-list-item">
                   <span>Backend URL</span>
-                  <code>{backendUrl}</code>
-                </div>
-                <div className="overview-list-item">
-                  <span>Token stored</span>
-                  <strong>{token ? "Yes" : "No"}</strong>
+                  <code>{buildApiUrl("")}</code>
                 </div>
                 <div className="overview-list-item">
                   <span>Admin access</span>
-                  <strong>{hasAdminAccess ? "Unlocked" : "Locked"}</strong>
+                  <strong>{isAdmin ? "Yes" : "No"}</strong>
                 </div>
               </div>
               <div className="admin-link-list">
@@ -145,7 +138,7 @@ const AdminOverviewPage = () => {
                   ))
                 ) : (
                   <p className="empty-state-text">
-                    No diagnostics run yet for this environment.
+                    No diagnostics run yet.
                   </p>
                 )}
               </div>
@@ -199,7 +192,7 @@ const AdminOverviewPage = () => {
               ) : (
                 <p className="empty-state-text">
                   Start using the Admin sections and your latest calls will show
-                  up here for the current environment.
+                  up here.
                 </p>
               )}
             </Card.Body>

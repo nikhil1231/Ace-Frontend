@@ -19,7 +19,6 @@ import {
 } from "react-icons/fa";
 
 import { getLogSources, getLogTail, streamLogFollow } from "../../api";
-import { useAppSettings } from "../../context/AppSettingsContext";
 
 const MAX_RENDERED_LINES = 2000;
 const DEFAULT_TAIL_SIZE = 200;
@@ -64,7 +63,6 @@ const formatBytes = (bytes = 0) => {
 };
 
 const AdminLogsPage = () => {
-  const { selectedEnvironment } = useAppSettings();
   const [sources, setSources] = useState(FALLBACK_SOURCES);
   const [selectedSource, setSelectedSource] = useState("web");
   const [tailSize, setTailSize] = useState(DEFAULT_TAIL_SIZE);
@@ -123,7 +121,7 @@ const AdminLogsPage = () => {
     setIsLoadingSources(true);
     setError("");
 
-    getLogSources({ environment: selectedEnvironment })
+    getLogSources()
       .then((nextSources) => {
         if (!isActive) {
           return;
@@ -158,7 +156,7 @@ const AdminLogsPage = () => {
     return () => {
       isActive = false;
     };
-  }, [selectedEnvironment]);
+  }, []);
 
   useEffect(() => {
     if (isFollowing || !selectedSource) {
@@ -173,7 +171,6 @@ const AdminLogsPage = () => {
     getLogTail({
       source: selectedSource,
       lines: tailSize,
-      environment: selectedEnvironment,
     })
       .then((payload) => {
         if (!isActive) {
@@ -200,7 +197,6 @@ const AdminLogsPage = () => {
   }, [
     isFollowing,
     replaceLogLines,
-    selectedEnvironment,
     selectedSource,
     tailSize,
   ]);
@@ -218,7 +214,6 @@ const AdminLogsPage = () => {
     streamLogFollow({
       source: selectedSource,
       lines: tailSize,
-      environment: selectedEnvironment,
       signal: controller.signal,
       onEvent: (event) => {
         if (controller.signal.aborted) {
@@ -267,7 +262,6 @@ const AdminLogsPage = () => {
   }, [
     appendLogLine,
     isFollowing,
-    selectedEnvironment,
     selectedSource,
     selectedSourceInfo,
     tailSize,

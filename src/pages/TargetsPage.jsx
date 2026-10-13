@@ -18,7 +18,7 @@ import {
   getVenues,
   putBookingTarget,
 } from "../api";
-import { useAppSettings } from "../context/AppSettingsContext";
+import { useSession } from "../context/SessionContext";
 import {
   clampDateToToday,
   fdate,
@@ -84,7 +84,7 @@ const buildTargetKey = (target) =>
   ].join("|");
 
 const TargetsPage = () => {
-  const { hasAdminAccess } = useAppSettings();
+  const { isAdmin, isLoading: isSessionLoading } = useSession();
   const [bookingTargets, setBookingTargets] = useState([]);
   const [venues, setVenues] = useState([]);
 
@@ -299,9 +299,9 @@ const TargetsPage = () => {
         </Button>
       </div>
 
-      {!hasAdminAccess ? (
+      {!isAdmin && !isSessionLoading ? (
         <Alert variant="warning">
-          Adding targets requires the master token in Settings.
+          Adding targets is admin-only.
         </Alert>
       ) : null}
 
@@ -443,7 +443,7 @@ const TargetsPage = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSavingTarget || !hasAdminAccess || isLoadingVenues}
+                  disabled={isSavingTarget || !isAdmin || isLoadingVenues}
                 >
                   {isSavingTarget ? "Adding..." : "Add target"}
                 </Button>
@@ -484,7 +484,7 @@ const TargetsPage = () => {
                       variant="outline-danger"
                       onClick={() => handleDelete(target)}
                       disabled={
-                        !hasAdminAccess ||
+                        !isAdmin ||
                         isSavingTarget ||
                         deletingTargetKey === buildTargetKey(target)
                       }

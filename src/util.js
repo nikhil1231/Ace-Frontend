@@ -1,48 +1,13 @@
-const APP_SETTINGS_KEY = "ACE_APP_SETTINGS_V1";
 const REQUEST_HISTORY_KEY = "ACE_REQUEST_HISTORY_V1";
 const REQUEST_PRESETS_KEY = "ACE_REQUEST_PRESETS_V1";
+// Presets and history used to be kept per backend environment; there is one backend now.
+const STORE_SCOPE = "hosted";
 
-export const SETTINGS_CHANGE_EVENT = "ace-settings-change";
 export const ADMIN_DATA_CHANGE_EVENT = "ace-admin-data-change";
-export const DEFAULT_BACKEND_ENVIRONMENT = "hosted";
 
-const LOCAL_BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL_LOCAL || "http://localhost:8000";
-const HOSTED_BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL_HOSTED ||
-  process.env.REACT_APP_BACKEND_URL ||
-  "https://ace.nikhil.ing";
-
-const normalizeUrl = (url) => String(url || "").trim().replace(/\/+$/, "");
-
-const DEFAULT_BACKEND_URLS = {
-  local: normalizeUrl(LOCAL_BACKEND_URL),
-  hosted: normalizeUrl(HOSTED_BACKEND_URL),
-};
-
-export const BACKEND_ENVIRONMENTS = {
-  local: {
-    key: "local",
-    label: "Local",
-    url: DEFAULT_BACKEND_URLS.local,
-  },
-  hosted: {
-    key: "hosted",
-    label: "Hosted",
-    url: DEFAULT_BACKEND_URLS.hosted,
-  },
-};
-
-const DEFAULT_APP_SETTINGS = {
-  selectedEnvironment: DEFAULT_BACKEND_ENVIRONMENT,
-  tokens: {
-    local: "",
-    hosted: "",
-  },
-  backendUrls: {
-    ...DEFAULT_BACKEND_URLS,
-  },
-};
+// The backend is served by the same origin under /api (nginx proxies it), behind Cloudflare
+// Access, so requests carry the Access session cookie and need no token of their own.
+export const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || "/api").replace(/\/+$/, "");
 
 const canUseBrowserStorage = () =>
   typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -74,21 +39,6 @@ const writeStoredJson = (key, value) => {
   window.localStorage.setItem(key, JSON.stringify(value));
 };
 
-const buildDefaultSettings = () => ({
-  selectedEnvironment: DEFAULT_APP_SETTINGS.selectedEnvironment,
-  tokens: {
-    ...DEFAULT_APP_SETTINGS.tokens,
-  },
-  backendUrls: {
-    ...DEFAULT_APP_SETTINGS.backendUrls,
-  },
-});
-
-const resolveEnvironmentKey = (environment) =>
-  BACKEND_ENVIRONMENTS[environment]
-    ? environment
-    : DEFAULT_BACKEND_ENVIRONMENT;
-
 export const deepClone = (value) => JSON.parse(JSON.stringify(value));
 
 export const getToday = () => {
@@ -109,108 +59,6 @@ export const clampDateToToday = (value) => {
   return value < today ? today : value;
 };
 
-export const readAppSettings = () => {
-  const storedValue = readStoredJson(APP_SETTINGS_KEY, {});
-  const selectedEnvironment = resolveEnvironmentKey(
-    storedValue.selectedEnvironment
-  );
-
-  return {
-    selectedEnvironment,
-    tokens: {
-      local: storedValue.tokens?.local || "",
-      hosted: storedValue.tokens?.hosted || "",
-    },
-    backendUrls: {
-      local:
-        normalizeUrl(storedValue.backendUrls?.local) || DEFAULT_BACKEND_URLS.local,
-      hosted:
-        normalizeUrl(storedValue.backendUrls?.hosted) ||
-        DEFAULT_BACKEND_URLS.hosted,
-    },
-  };
-};
-
-const saveAppSettings = (settings) => {
-  writeStoredJson(APP_SETTINGS_KEY, settings);
-  emitBrowserEvent(SETTINGS_CHANGE_EVENT);
-  return settings;
-};
-
-export const getSelectedEnvironment = () => readAppSettings().selectedEnvironment;
-
-export const setSelectedEnvironment = (environment) => {
-  const settings = readAppSettings();
-  settings.selectedEnvironment = resolveEnvironmentKey(environment);
-
-  return saveAppSettings(settings);
-};
-
-export const getBackendOptions = () => Object.values(BACKEND_ENVIRONMENTS);
-
-export const getDefaultBackendUrl = (environment) =>
-  DEFAULT_BACKEND_URLS[resolveEnvironmentKey(environment)];
-
-export const getDefaultBackendUrls = () => ({ ...DEFAULT_BACKEND_URLS });
-
-export const getBackendUrl = (environment = getSelectedEnvironment()) => {
-  const settings = readAppSettings();
-  const environmentKey = resolveEnvironmentKey(environment);
-  const configuredUrl = normalizeUrl(settings.backendUrls?.[environmentKey]);
-
-  return configuredUrl || getDefaultBackendUrl(environmentKey);
-};
-
-export const setBackendUrl = (url, environment = getSelectedEnvironment()) => {
-  const settings = readAppSettings();
-  const environmentKey = resolveEnvironmentKey(environment);
-  const normalizedUrl = normalizeUrl(url);
-
-  settings.backendUrls[environmentKey] =
-    normalizedUrl || getDefaultBackendUrl(environmentKey);
-
-  return saveAppSettings(settings);
-};
-
-export const setBackendUrls = (backendUrls = {}) => {
-  const settings = readAppSettings();
-
-  Object.keys(BACKEND_ENVIRONMENTS).forEach((environment) => {
-    const normalizedUrl = normalizeUrl(backendUrls[environment]);
-    settings.backendUrls[environment] =
-      normalizedUrl || getDefaultBackendUrl(environment);
-  });
-
-  return saveAppSettings(settings);
-};
-
-export const resetBackendUrl = (environment = getSelectedEnvironment()) => {
-  const settings = readAppSettings();
-  const environmentKey = resolveEnvironmentKey(environment);
-
-  settings.backendUrls[environmentKey] = getDefaultBackendUrl(environmentKey);
-  return saveAppSettings(settings);
-};
-
-export const getToken = (environment = getSelectedEnvironment()) => {
-  const settings = readAppSettings();
-  return settings.tokens[environment] || "";
-};
-
-export const setToken = (token, environment = getSelectedEnvironment()) => {
-  const settings = readAppSettings();
-  settings.tokens[environment] = token.trim();
-  return saveAppSettings(settings);
-};
-
-export const clearToken = (environment = getSelectedEnvironment()) => {
-  const settings = readAppSettings();
-  settings.tokens[environment] = "";
-  return saveAppSettings(settings);
-};
-
-export const resetAppSettings = () => saveAppSettings(buildDefaultSettings());
-
 const subscribeToWindowEvents = (events, handler) => {
   if (typeof window === "undefined") {
     return () => {};
@@ -225,9 +73,6 @@ const subscribeToWindowEvents = (events, handler) => {
   };
 };
 
-export const subscribeToSettingsChange = (handler) =>
-  subscribeToWindowEvents([SETTINGS_CHANGE_EVENT, "storage"], handler);
-
 const readPresetStore = () => readStoredJson(REQUEST_PRESETS_KEY, {});
 
 const savePresetStore = (value) => {
@@ -237,7 +82,7 @@ const savePresetStore = (value) => {
 
 export const getEndpointPresets = (
   endpointId,
-  environment = getSelectedEnvironment()
+  environment = STORE_SCOPE
 ) => {
   const presets = readPresetStore();
   return presets[environment]?.[endpointId] || [];
@@ -247,7 +92,7 @@ export const saveEndpointPreset = (
   endpointId,
   name,
   values,
-  environment = getSelectedEnvironment()
+  environment = STORE_SCOPE
 ) => {
   const presets = readPresetStore();
   const environmentPresets = presets[environment] || {};
@@ -270,7 +115,7 @@ export const saveEndpointPreset = (
 export const deleteEndpointPreset = (
   endpointId,
   presetId,
-  environment = getSelectedEnvironment()
+  environment = STORE_SCOPE
 ) => {
   const presets = readPresetStore();
   const environmentPresets = presets[environment] || {};
@@ -290,14 +135,14 @@ const saveHistoryStore = (value) => {
   emitBrowserEvent(ADMIN_DATA_CHANGE_EVENT);
 };
 
-export const getRequestHistory = (environment = getSelectedEnvironment()) => {
+export const getRequestHistory = (environment = STORE_SCOPE) => {
   const history = readHistoryStore();
   return history[environment] || [];
 };
 
 export const pushRequestHistory = (
   entry,
-  environment = getSelectedEnvironment()
+  environment = STORE_SCOPE
 ) => {
   const history = readHistoryStore();
   const environmentHistory = history[environment] || [];
